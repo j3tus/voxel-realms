@@ -1,6 +1,6 @@
 {
   "name": "voxel-realms",
-  "version": "2.3.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Voxel Realms - a browser voxel sandbox with an authoritative multiplayer server and admin panel",

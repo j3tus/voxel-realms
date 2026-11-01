@@ -1,5 +1,5 @@
 # Builds the installable apps and checks the Rust/WASM terrain generator.
-# Push a tag like v2.4.0 (git tag v2.4.0 && git push --tags) to publish a GitHub Release with stable asset names that the website's
+# Push a tag like v1.0.0 (git tag v1.0.0 && git push --tags) to publish a GitHub Release with stable asset names that the website's
 # /site/download.html links to; or run it by hand (Actions -> apps -> Run workflow) to just get the build artifacts.
 name: apps
 on:

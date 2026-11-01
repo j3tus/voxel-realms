@@ -18,6 +18,6 @@ Not done yet: code signing / notarisation, store listings, app icons for Android
 ## Releasing (GitHub)
 1. Create the GitHub repo and push this project (`git init`, add the remote, push; the repo root is this folder).
 2. Put the repo in `site/download.html`: `<meta name="vr-repo" content="YOUR_USER/YOUR_REPO">`, then redeploy the site (`./vr update`).
-3. Publish: `git tag v2.4.0 && git push --tags`. The *apps* workflow builds everything and attaches fixed-name files to the release
+3. Publish: `git tag v1.0.0 && git push --tags`. The *apps* workflow builds everything and attaches fixed-name files to the release
    (`voxel-realms-windows-x64-setup.exe`, `-windows-x64.msi`, `-macos.dmg`, `-linux-x64.AppImage`, `-linux-x64.deb`, `-android.apk`),
    which is what `/site/download.html` links to via `releases/latest/download/`. Until the repo is set the page shows "not published yet".

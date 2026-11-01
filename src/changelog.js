@@ -1,6 +1,6 @@
 // In-app change log. Dates before 2026-10-30 are reconstructed from file timestamps and chat history (approximate).
 export const CHANGELOG = [
-  { v: '2.4.0', date: '2026-11-01', title: 'Faster worlds, themed arenas, round lobby, apps', items: [
+  { v: '1.0.0', date: '2026-11-01', title: 'Faster worlds, themed arenas, round lobby, apps', items: [
     'Terrain generation now runs in a Rust (WebAssembly) generator, about 6x faster than before and identical block-for-block, in the browser and on the server',
     'The server generates terrain on a background thread, so the game no longer hitches when players explore new ground',
     'Multiplayer arenas have themes (Fortress, Dunes, Frost, Nether) with lit walls, a raised centre, low cover lanes and four sniper towers',
@@ -8,7 +8,7 @@ export const CHANGELOG = [
     'Ambient sound fixed, generative music added, and a music player for YouTube and your own files with credits shown',
     'Desktop (Tauri) and mobile (Capacitor) app shells with a server picker are in the repo, ready to build',
   ] },
-  { v: '2.3.0', date: '2026-10-31', title: 'Game-style menus and the new admin panel', items: [
+  { v: '0.6.0', date: '2026-10-31', title: 'Game-style menus and the new admin panel', items: [
     'Menus redesigned as HUD panels: glowing cards with corner brackets, a sidebar settings page, switches, sliders with fill, pills and server tiles',
     'Menu keyboard shortcuts: 1-5 to pick an item, Esc to go back; a NEW badge shows when there is an unread change log; soft UI sounds',
     'Settings and menus fit phones and short windows (nothing runs off-screen, Settings is always reachable)',
@@ -16,7 +16,7 @@ export const CHANGELOG = [
     'Admin number prompts accept decimals (price multipliers), and every admin action is covered by an automated browser test',
     'The classic admin panel is retired; everything it did lives in the new one',
   ] },
-  { v: '2.2.0', date: '2026-10-30', title: 'Rooms, round worlds and better commands', items: [
+  { v: '0.5.0', date: '2026-10-30', title: 'Rooms, round worlds and better commands', items: [
     'Physical server browser: the lobby is now a round hall with a ring of portals, one per room, with live signs (players, bots, countdown, bot skill)',
     'Rooms open and close automatically as games fill up, sized by what the server can carry; /create makes your own with any player and bot count',
     'Admins can also pin their own rooms with custom player caps and bots; everything shrinks gracefully when the server is busy',
@@ -26,7 +26,7 @@ export const CHANGELOG = [
     'Admin panel: new Bots page, capacity meter, live map and room creation',
     'Fixed: mouse capture that stopped working after Esc or in some browsers, maintenance mode (players are now sent to the menu with the reason, and the server list shows it), blocks and the hotbar showing in FPS modes, and the over-bright Ultra glow',
   ] },
-  { v: '2.1.0', date: '2026-10-30', title: 'New modes, bots and website', items: [
+  { v: '0.4.0', date: '2026-10-30', title: 'New modes, bots and website', items: [
     'New modes: Search & Destroy and Bed Wars (competitive), Boss Raid and Tower Defence (co-op)',
     'Bots keep every game mode populated while at least one human is inside',
     'Official website with gameplay screenshots at /site/',
@@ -34,7 +34,7 @@ export const CHANGELOG = [
     'Admin: portal toggle on each world card',
     'Launcher and ports page show the permanent public link and live player counts',
   ] },
-  { v: '2.0.5', date: '2026-10-29', title: 'Lobby hub, parties and private games', items: [
+  { v: '0.3.0', date: '2026-10-29', title: 'Lobby hub, parties and private games', items: [
     'Walk-in portal lobby (like Hypixel); the server browser lists just the lobby',
     'Parties (/party) travel through portals together',
     'Private games: /create <mode> [bots] [skill] and /join <code>',
@@ -42,7 +42,7 @@ export const CHANGELOG = [
     'Stable public URL via Tailscale Funnel that never changes',
     'Performance HUD (F3 or tap the coordinates on phones)',
   ] },
-  { v: '2.0.3', date: '2026-10-28', title: 'Performance, graphics and mobile', items: [
+  { v: '0.2.0', date: '2026-10-28', title: 'Performance, graphics and mobile', items: [
     'Auto-adaptive quality: picks settings per device and lowers or restores effects as needed',
     'High preset adds ambient occlusion and cinematic effects; opt-in Ultra preset',
     'Chunk remeshing is queued so network and water updates no longer stutter',
@@ -50,7 +50,7 @@ export const CHANGELOG = [
     'Mobile: full UX pass, Place button no longer covers the hearts in portrait',
     'Fixed the big map screen and the gun not firing',
   ] },
-  { v: '2.0.0', date: '2026-10-27', title: 'Voxel Realms 2.0', items: [
+  { v: '0.1.0', date: '2026-10-27', title: 'Voxel Realms first release', items: [
     'Creative, survival and career modes with contracts',
     'Multiplayer server with admin panel',
     'Gun Arena, Team Deathmatch, Gun Game, Spleef, Zombies, Battle Royale, Capture the Flag, Hide & Seek and Parkour',

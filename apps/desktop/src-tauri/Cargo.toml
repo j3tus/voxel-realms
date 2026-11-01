@@ -1,6 +1,6 @@
 [package]
 name = "voxel-realms-desktop"
-version = "0.1.0"
+version = "1.0.0"
 description = "Voxel Realms desktop app: a server picker that opens the game in a native window"
 edition = "2021"
 

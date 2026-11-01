@@ -20,7 +20,7 @@ import { computeCapacity, readMetrics, roomLoad } from './capacity.js';
 import { planAutoRooms, fitCustomGame, MODE_TITLE, ROOM_MODES } from './rooms.js';
 import { parseGame, HelloMsg } from './protocol.js';
 
-const PORT = +process.env.PORT || 8080, HOST = process.env.HOST || '0.0.0.0', VERSION = '2.4.0';
+const PORT = +process.env.PORT || 8080, HOST = process.env.HOST || '0.0.0.0', VERSION = '1.0.0';
 const MAX_PER_IP = +process.env.MAX_PER_IP || 4;
 const { config, newToken } = loadConfig();
 const startedAt = Date.now();
