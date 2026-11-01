@@ -27,3 +27,5 @@ data/
 backups/
 .env
 *.bak*
+admin-ui/.nuxt
+admin-ui/.output
