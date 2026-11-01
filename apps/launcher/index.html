@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Voxel Realms</title><link rel="stylesheet" href="launcher.css"></head>
+<body>
+<main>
+  <header><div class="logo">▦</div><h1>VOXEL REALMS</h1><p class="sub">Pick a server to play</p></header>
+  <section id="list" aria-live="polite"></section>
+  <form id="add" autocomplete="off">
+    <input id="n" placeholder="Name (optional)" maxlength="40"><input id="u" placeholder="Server address, e.g. play.example.com or https://…" required>
+    <button type="submit">Add server</button>
+  </form>
+  <p class="hint" id="hint"></p>
+  <footer><label><input type="checkbox" id="auto"> Connect to the last server automatically on start</label></footer>
+</main>
+<script src="launcher.js"></script>
+</body></html>

@@ -1,0 +1,37 @@
+# Voxel Realms in Docker. Don't edit by hand: `./vr setup` writes .env, `./vr up|down|update|...` drive this file.
+services:
+  voxel-realms:
+    build: .
+    image: voxel-realms:local
+    container_name: voxel-realms
+    restart: unless-stopped
+    user: "${VR_UID:-1000}:${VR_GID:-1000}"          # same owner as the data folder
+    ports:
+      - "${VR_GAME_PORT:-8080}:8080"                 # public game port
+      - "127.0.0.1:${VR_ADMIN_PORT:-8185}:8185"      # admin: loopback only; share privately with `tailscale serve`, never a public tunnel
+    environment:
+      PORT: "8080"
+      ADMIN_PORT: "8185"
+      ADMIN_HOST: "0.0.0.0"                          # inside the container only; the host publishes it on 127.0.0.1
+      DATA_DIR: /data
+      LOG_LEVEL: info
+    env_file:
+      - path: .env                                   # ADMIN_PASSWORD, optional MAX_PER_IP / WS_RATE
+        required: false
+    volumes:
+      - ${VR_DATA:-./data}:/data
+    mem_limit: ${VR_MEM:-2g}
+    cpus: ${VR_CPUS:-2}
+    stop_grace_period: 20s
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"  # locally built image; nothing to pull
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  cloudflared:                                       # only with COMPOSE_PROFILES=tunnel (set by ./vr setup)
+    image: cloudflare/cloudflared:latest
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://voxel-realms:8080
+    depends_on: [voxel-realms]

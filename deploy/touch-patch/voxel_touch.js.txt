@@ -1,0 +1,69 @@
+
+/* ---------------- touch controls (phones / tablets) ---------------- */
+const TOUCH=(navigator.maxTouchPoints>0&&matchMedia('(pointer:coarse)').matches)||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(TOUCH){
+  document.body.classList.add('touch');
+  canvas.requestPointerLock=()=>{};                               // no pointer lock on touch screens: the game's drag-to-look fallback is used
+  TUT.splice(0,TUT.length,['Drag on the left to move',()=>tut.moved>5],['Tap Jump to jump',()=>tut.jumped],['Hold the screen (or Break) to dig a block',()=>tut.broke],['Tap the screen (or Place) to build',()=>tut.placed],['Open the Bag to pick blocks',()=>tut.inv],['Tap Menu any time to pause',()=>tut.help]);
+  const SV=p=>`<svg viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;
+  const IC={ break:SV('<path d="M4 20l9-9"/><path d="M9.5 6.5C12.5 3.5 17 3.5 20.5 7.5"/><path d="M14.5 3.5c.5 4 3.5 7 6 6.5"/>'),
+    place:SV('<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/>'),
+    jump:SV('<path d="M6 13l6-6 6 6M6 19l6-6 6 6"/>'), menu:SV('<path d="M5 7h14M5 12h14M5 17h14"/>'),
+    bag:SV('<rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/>'),
+    down:SV('<path d="M6 11l6 6 6-6M6 5l6 6 6-6"/>'),
+    run:SV('<path d="M5 6l6 6-6 6M12 6l6 6-6 6"/>'), fly:SV('<path d="M3 11.5L21 4l-7 17-3-7z"/>'),
+    view:SV('<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'), chat:SV('<path d="M4 5h16v11H9l-5 4z"/>') };
+  const btn=(id,ic,label)=>`<button id="${id}" aria-label="${label}"><i>${IC[ic]}</i><b>${label}</b></button>`;
+  const ui=document.createElement('div'); ui.id='tui'; ui.style.display='none';
+  ui.innerHTML='<div id="tlook"></div><i id="tghost"></i><div id="tstick"><i id="tring"></i><i id="tknob"></i></div>'
+    +'<div id="tbtns">'+btn('tbreak','break','Break')+btn('tplace','place','Place')+btn('tjump','jump','Jump')+btn('tdown','down','Down')+'</div>'
+    +'<div id="ttop">'+btn('tmenu','menu','Menu')+btn('tinv','bag','Bag')+btn('tsprint','run','Run')+btn('tfly','fly','Fly')+btn('tview','view','View')+btn('tchat','chat','Chat')+'</div>';
+  document.body.appendChild(ui);
+  const T=id=>document.getElementById(id), R=64, vib=n=>{ try{ navigator.vibrate&&navigator.vibrate(n); }catch(e){} };
+  const live=()=>started&&!S.dead&&!invOpen&&!modalOpen&&!paused&&!chatOpen&&menu.style.display==='none';
+  const fit=()=>{ const s=Math.min(1,(innerWidth-14)/(hbEl.offsetWidth||1),innerHeight<460?.62:1); hbEl.style.setProperty('--hbs',s.toFixed(3)); const r=hbEl.getBoundingClientRect(); ui.style.setProperty('--hbh',Math.max(0,innerHeight-r.top)+'px'); };
+  addEventListener('resize',fit); addEventListener('orientationchange',()=>setTimeout(fit,250));
+  setInterval(()=>{ const on=live(); ui.style.display=on?'block':'none'; T('tchat').style.display=ws?'':'none'; T('tfly').style.display=(survival()||inArena())?'none':''; T('tdown').style.display=P.fly?'':'none'; T('tsprint').style.display=P.fly?'none':''; fit();
+    if(!on){ for(const k of ['KeyW','KeyA','KeyS','KeyD','Space']) keys[k]=false; mouseL=false; } },150);
+  ui.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+  ui.addEventListener('contextmenu',e=>e.preventDefault());
+
+  // floating joystick: the first touch in the left zone becomes the stick origin
+  let sid=null, ox=0, oy=0, latch=false;
+  const stick=T('tstick'), ring=T('tring'), knob=T('tknob');
+  const setMove=(dx,dy)=>{ const d=Math.hypot(dx,dy), n=Math.min(d,R), ux=d?dx/d*n:0, uy=d?dy/d*n:0; knob.style.transform=`translate(${ux}px,${uy}px)`;
+    keys.KeyW=uy<-R*.3; keys.KeyS=uy>R*.3; keys.KeyA=ux<-R*.3; keys.KeyD=ux>R*.3; keys.ShiftLeft=latch||(uy<-R*.92); };
+  stick.addEventListener('pointerdown',e=>{ if(sid!==null) return; sid=e.pointerId; stick.setPointerCapture(e.pointerId); ox=e.clientX; oy=e.clientY; ui.classList.add('moving');
+    for(const el of [ring,knob]){ el.style.left=ox+'px'; el.style.top=oy+'px'; } setMove(0,0); e.preventDefault(); });
+  stick.addEventListener('pointermove',e=>{ if(e.pointerId!==sid) return; setMove(e.clientX-ox,e.clientY-oy); e.preventDefault(); });
+  const endStick=e=>{ if(e.pointerId!==sid) return; sid=null; ui.classList.remove('moving'); keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false; keys.ShiftLeft=latch; knob.style.transform=''; };
+  stick.addEventListener('pointerup',endStick); stick.addEventListener('pointercancel',endStick);
+
+  // look: drag anywhere on the right (with a little acceleration); tap = place / interact, press and hold = break / attack
+  let lid=null, lx=0, ly=0, lt=0, lm=0, holdT=0, holding=false; const look_=T('tlook');
+  const startHold=()=>{ if(lid===null||lm>10||!live()) return; holding=true; vib(14); if(targetEnt) attackMob(targetEnt); else { mouseL=true; mineT=0; mine.p=0; if(!survival()) breakBlock(); } };
+  look_.addEventListener('pointerdown',e=>{ if(lid!==null) return; lid=e.pointerId; look_.setPointerCapture(e.pointerId); lx=e.clientX; ly=e.clientY; lt=performance.now(); lm=0; holding=false; clearTimeout(holdT); holdT=setTimeout(startHold,320); e.preventDefault(); });
+  look_.addEventListener('pointermove',e=>{ if(e.pointerId!==lid) return; const dx=e.clientX-lx, dy=e.clientY-ly; lx=e.clientX; ly=e.clientY; const v=Math.hypot(dx,dy); lm+=v; if(lm>10&&!holding) clearTimeout(holdT); const k=1.15+Math.min(1,v/22); look(dx*k,dy*k); e.preventDefault(); });
+  const endLook=e=>{ if(e.pointerId!==lid) return; lid=null; clearTimeout(holdT);
+    if(holding){ holding=false; mouseL=false; return; }
+    if(e.type==='pointerup'&&lm<8&&performance.now()-lt<260&&live()){ vib(10); if(targetEnt) interactMob(targetEnt); else placeBlock(); } };
+  look_.addEventListener('pointerup',endLook); look_.addEventListener('pointercancel',endLook);
+
+  // action buttons
+  const press=(id,down,up)=>{ const b=T(id); b.addEventListener('pointerdown',e=>{ e.preventDefault(); b.setPointerCapture(e.pointerId); b.classList.add('on'); down(); });
+    const rel=()=>{ b.classList.remove('on'); if(up) up(); }; b.addEventListener('pointerup',rel); b.addEventListener('pointercancel',rel); };
+  press('tbreak',()=>{ vib(10); if(targetEnt){ attackMob(targetEnt); return; } mouseL=true; mineT=0; mine.p=0; if(!survival()) breakBlock(); },()=>{ mouseL=false; });
+  press('tplace',()=>{ vib(10); if(targetEnt) interactMob(targetEnt); else placeBlock(); });
+  press('tjump',()=>{ keys.Space=true; vib(8); },()=>{ keys.Space=false; });
+  press('tdown',()=>{ keys.ShiftLeft=true; },()=>{ keys.ShiftLeft=latch; });
+  const tap=(id,fn)=>T(id).addEventListener('click',e=>{ e.preventDefault(); fn(); });
+  tap('tmenu',()=>{ tut.help=true; paused=true; mouseL=false; openMenu('main'); });
+  tap('tinv',()=>{ if(started&&!S.dead) toggleInv(); });
+  tap('tchat',()=>openChat());
+  tap('tsprint',()=>{ latch=!latch; keys.ShiftLeft=latch; T('tsprint').classList.toggle('latched',latch); showToast(latch?'Sprint on':'Sprint off'); });
+  tap('tfly',()=>{ if(survival()||inArena()){ showToast('Flying is creative-only'); return; } P.fly=!P.fly; T('tfly').classList.toggle('latched',P.fly); showToast(P.fly?'Flight on':'Flight off'); });
+  tap('tview',()=>{ thirdP=(thirdP+1)%3; showToast(['First person','Third person (back)','Third person (front)'][thirdP]); });
+  // hotbar slots become tappable (the bar is rebuilt on every change, so delegate)
+  if(new URLSearchParams(location.search).has('e2e')) window.__tdbg=()=>({lid,sid,holding,lm,live:live()});
+  hbEl.addEventListener('pointerdown',e=>{ const s=e.target.closest('.slot'); if(!s) return; const i=[...hbEl.children].indexOf(s); if(i>=0){ selectSlot(i); e.preventDefault(); } });
+}

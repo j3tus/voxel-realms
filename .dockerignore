@@ -1,0 +1,15 @@
+node_modules
+dist
+data
+.env
+test
+.git
+admin-ui
+*.png
+**/*.bak*
+dist.*
+reports
+deploy
+apps
+wasm/*/target
+.github

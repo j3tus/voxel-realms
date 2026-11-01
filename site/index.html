@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Voxel Realms - Build. Fight. Play together.</title>
+<meta name="description" content="Voxel Realms is a free, instant-play block world with a hub of 13 multiplayer games - gun arenas, capture the flag, boss raids, tower defence and more. Walk into a portal and play, on any phone or PC. Bots fill every match.">
+<meta name="theme-color" content="#060a12">
+<meta property="og:title" content="Voxel Realms - Build. Fight. Play together.">
+<meta property="og:description" content="An infinite block world and a hub of 13 multiplayer games you walk into through portals. Free. Instant. Phone &amp; PC.">
+<meta property="og:image" content="img/hero-dusk.jpg">
+<meta property="og:type" content="website">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="glow" id="glow" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Voxel Realms"><span class="cube-ico"></span><b>Voxel<em>Realms</em></b></a>
+  <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><i></i><i></i><i></i></button>
+  <nav class="links" id="links">
+    <a href="#lobby">The Lobby</a><a href="#games">Games</a><a href="#gallery">Screens</a><a href="#bots">Bots &amp; Friends</a><a href="#anywhere">Phone &amp; PC</a><a href="#host">Host</a><a href="download.html">Download</a><a href="#faq">FAQ</a>
+    <a class="btn btn-sm" href="../">Play now</a>
+  </nav>
+</header>
+
+<main id="top">
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-bg" id="heroBg"></div><div class="hero-fade"></div>
+  <div class="wrap hero-in">
+    <p class="eyebrow reveal">Free &middot; Instant &middot; No install</p>
+    <h1 class="reveal d1">Voxel<br><span>Realms</span></h1>
+    <p class="lead reveal d2">An infinite block world &mdash; and a <b>hub of 13 multiplayer games</b> you step into through glowing portals. Build, fight, race and survive with friends or with bots, on any phone or PC.</p>
+    <div class="cta reveal d3"><a class="btn btn-xl" href="../">&#9654; Play now</a><a class="btn btn-ghost btn-xl" href="#games">Explore the games</a></div>
+    <ul class="pills reveal d4"><li>&#127918; 13 game modes</li><li>&#129302; Bots keep matches full</li><li>&#128241; Built for touch</li><li>&#9889; Adapts to your device</li></ul>
+  </div>
+  <a class="scroll" href="#lobby" aria-label="Scroll"><i></i></a>
+</section>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-in" id="ticker"></div></div>
+
+<!-- ================= STATS ================= -->
+<section class="stats wrap">
+  <div class="stat reveal"><b data-n="13">0</b><span>game modes</span></div>
+  <div class="stat reveal d1"><b data-n="12">0</b><span>portals in the hub</span></div>
+  <div class="stat reveal d2"><b data-n="16">0</b><span>players per match</span></div>
+  <div class="stat reveal d3"><b>&infin;</b><span>world to explore</span></div>
+</section>
+
+<!-- ================= LOBBY ================= -->
+<section class="sec" id="lobby">
+  <div class="wrap split">
+    <div class="copy">
+      <p class="eyebrow reveal">The hub</p>
+      <h2 class="reveal d1">Walk into a portal.<br><span>You're in the game.</span></h2>
+      <p class="reveal d2">Every server is a <b>lobby</b>: a glowing hall with a portal for each game. Each one shows what it is, how many people are playing, and whether a round is open or already running. Step through and you're there &mdash; no menus, no waiting rooms.</p>
+      <ul class="ticks reveal d3">
+        <li>Live player counts and round status on every portal</li>
+        <li>Party up with <code>/party invite</code> &mdash; the leader walks in, everyone follows</li>
+        <li>Full game? The portal tells you instead of kicking you</li>
+        <li>Back to the lobby any time with <code>/lobby</code> or the pause menu</li>
+      </ul>
+    </div>
+    <figure class="shot tilt reveal d2"><img src="img/lobby-portals.jpg" alt="The Voxel Realms lobby with glowing game portals" loading="lazy"><figcaption>The lobby hub</figcaption></figure>
+  </div>
+</section>
+
+<!-- ================= GAMES ================= -->
+<section class="sec alt" id="games">
+  <div class="wrap">
+    <p class="eyebrow center reveal">13 ways to play</p>
+    <h2 class="center reveal d1">Pick your <span>game</span></h2>
+    <div class="chips reveal d2" id="chips" role="tablist"><button class="chip on" data-f="all">All</button><button class="chip" data-f="coop">Co-op</button><button class="chip" data-f="team">Team</button><button class="chip" data-f="solo">Free-for-all</button><button class="chip" data-f="casual">Casual</button></div>
+    <div class="cards" id="cards"></div>
+  </div>
+</section>
+
+<!-- ================= GALLERY ================= -->
+<section class="sec" id="gallery">
+  <div class="wrap">
+    <p class="eyebrow center reveal">Screenshots</p>
+    <h2 class="center reveal d1">Straight from <span>the game</span></h2>
+    <div class="gal" id="gal"></div>
+  </div>
+</section>
+
+<!-- ================= BOTS / FRIENDS ================= -->
+<section class="sec alt" id="bots">
+  <div class="wrap">
+    <p class="eyebrow center reveal">Never play alone</p>
+    <h2 class="center reveal d1">Bots, parties &amp; <span>private games</span></h2>
+    <div class="tri">
+      <article class="panel reveal"><div class="ico">&#129302;</div><h3>Bots fill the gaps</h3><p>Join a quiet game and AI players top it up instantly &mdash; they fight, capture flags, plant bombs and fend off zombies. The moment real people arrive, bots step aside one by one.</p></article>
+      <article class="panel reveal d1"><div class="ico">&#129309;</div><h3>Parties</h3><p>Invite friends with <code>/party invite name</code>. When the leader walks into a portal, the whole party goes together &mdash; and the game checks everyone fits first.</p></article>
+      <article class="panel reveal d2"><div class="ico">&#127922;</div><h3>Your own match</h3><p>Type <code>/create tdm 6 hard</code> for a private game with six hard bots. Share the code, friends hop in with <code>/join</code>. It cleans itself up when you're done.</p></article>
+    </div>
+    <div class="term reveal d2" id="term"><div class="term-bar"><i></i><i></i><i></i><span>chat</span></div><pre><span class="dim">&gt;</span> /create ctf 5 normal
+<span class="ok">Created Alex's Capture the Flag with 5 bots.</span> Friends can join with /join g4k2
+<span class="dim">&gt;</span> /party invite Sam
+<span class="ok">Invited Sam.</span>
+<span class="dim">&gt;</span> /lobby
+<span class="ok">Entering Lobby...</span></pre></div>
+  </div>
+</section>
+
+<!-- ================= ANYWHERE ================= -->
+<section class="sec" id="anywhere">
+  <div class="wrap split rev">
+    <div class="phones reveal d1">
+      <figure class="phone p1"><img src="img/phone-menu.jpg" alt="Voxel Realms mobile menu" loading="lazy"></figure>
+      <figure class="phone p2"><img src="img/phone-servers.jpg" alt="Server list on mobile" loading="lazy"></figure>
+      <figure class="phone p3"><img src="img/phone-loading.jpg" alt="Loading screen on mobile" loading="lazy"></figure>
+    </div>
+    <div class="copy">
+      <p class="eyebrow reveal">Phone &amp; PC</p>
+      <h2 class="reveal d1">Made for thumbs.<br><span>Tuned for any screen.</span></h2>
+      <p class="reveal d2">One link, no download. Touch controls with an analog stick, fire/reload/swap buttons and a full-screen map &mdash; plus keyboard and mouse on desktop.</p>
+      <ul class="ticks reveal d3">
+        <li><b>Adaptive quality</b> &mdash; detects your device, then lowers resolution and effects on the fly if frames slip, and gives them back when there's headroom</li>
+        <li><b>Ultra mode</b> for strong GPUs: shadows, ambient occlusion, bloom, light shafts</li>
+        <li>Live <b>performance stats</b> overlay: FPS, 1% lows, frame graph, ping, draw calls</li>
+        <li>Fast, flicker-free world loading with chunk streaming</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOST ================= -->
+<section class="sec alt" id="host">
+  <div class="wrap split">
+    <div class="copy">
+      <p class="eyebrow reveal">Run your own</p>
+      <h2 class="reveal d1">Your server, <span>your rules</span></h2>
+      <p class="reveal d2">Voxel Realms ships with its own game server and admin panel. It runs on a laptop &mdash; or a Raspberry Pi. One click sets up the whole hub, and you choose which games get a portal.</p>
+      <div class="code reveal d3"><button class="copy-btn" data-copy="npm install &amp;&amp; npm run build &amp;&amp; npm start">Copy</button><pre><span class="dim"># start a server</span>
+npm install &amp;&amp; npm run build &amp;&amp; npm start
+<span class="dim"># then: Admin &rarr; Games &rarr; <b>Set up game hub</b></span></pre></div>
+      <ul class="ticks reveal d3">
+        <li>Toggle any game's portal on or off per server</li>
+        <li>Live dashboard: players, TPS, CPU, memory, logs</li>
+        <li>Bans, allowlist, operators, maintenance mode, backups &amp; restore</li>
+        <li>Mobile-friendly admin panel with built-in help</li>
+      </ul>
+    </div>
+    <div class="stack reveal d2">
+      <figure class="shot browser"><div class="bbar"><i></i><i></i><i></i><span>/admin</span></div><img src="img/admin-worlds.jpg" alt="Admin panel: games, live state and lobby portal switches" loading="lazy"></figure>
+      <figure class="shot browser b2"><div class="bbar"><i></i><i></i><i></i><span>/admin</span></div><img src="img/admin-dashboard.jpg" alt="Admin overview: live games, capacity and charts" loading="lazy"></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONTROLS ================= -->
+<section class="sec" id="controls">
+  <div class="wrap">
+    <p class="eyebrow center reveal">Quick start</p>
+    <h2 class="center reveal d1">How to <span>play</span></h2>
+    <div class="ctl">
+      <div class="panel reveal"><h3>&#128421; Keyboard &amp; mouse</h3><table><tr><td><kbd>W A S D</kbd></td><td>Move</td></tr><tr><td><kbd>Shift</kbd></td><td>Sprint</td></tr><tr><td><kbd>Space</kbd></td><td>Jump / swim</td></tr><tr><td><kbd>LMB</kbd> / <kbd>RMB</kbd></td><td>Break or shoot / place</td></tr><tr><td><kbd>1</kbd>&ndash;<kbd>4</kbd> &middot; <kbd>R</kbd></td><td>Weapons &middot; reload</td></tr><tr><td><kbd>M</kbd></td><td>Full-screen map</td></tr><tr><td><kbd>F3</kbd></td><td>Performance stats</td></tr></table></div>
+      <div class="panel reveal d1"><h3>&#128241; Touch</h3><table><tr><td>Left thumb</td><td>Analog stick &mdash; push further to run</td></tr><tr><td>Right side</td><td>Drag to look, tap to place, hold to break/fire</td></tr><tr><td><b>Fire</b> / <b>Reload</b></td><td>Buttons in gun games</td></tr><tr><td>Ammo panel</td><td>Tap to swap weapon</td></tr><tr><td>Minimap</td><td>Tap for the big map</td></tr><tr><td>Coordinates</td><td>Tap for performance stats</td></tr></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="sec alt" id="faq">
+  <div class="wrap narrow">
+    <p class="eyebrow center reveal">Questions</p>
+    <h2 class="center reveal d1">Good to <span>know</span></h2>
+    <div class="faq reveal d2">
+      <details open><summary>Is it free? Do I need to install anything?</summary><p>It's free and runs entirely in your browser &mdash; open the link and play. No account, no download.</p></details>
+      <details><summary>What if nobody else is online?</summary><p>Bots join automatically whenever at least one person is in a game, so you can always get a match. Real players replace bots as they arrive.</p></details>
+      <details><summary>It runs slowly on my phone. What can I do?</summary><p>The game picks settings for your device and adapts while you play. You can also choose the Low preset, or press F3 / tap the coordinates to see exactly what's slow.</p></details>
+      <details><summary>Can I play with friends privately?</summary><p>Yes &mdash; use <code>/create</code> to spin up a private match with as many bots as you like, then share the code. Or form a <code>/party</code> and walk into any portal together.</p></details>
+      <details><summary>Can I host my own server and pick the games?</summary><p>Yes. Start the server, open <code>/admin/</code>, hit <b>Set up game hub</b>, and switch portals on or off per game. It also runs on a Raspberry Pi.</p></details>
+      <details><summary>Does my singleplayer world save?</summary><p>Worlds save automatically in your browser. Multiplayer worlds are saved by the server with automatic backups.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final">
+  <div class="final-bg"></div>
+  <div class="wrap center">
+    <h2 class="reveal">Ready to <span>drop in?</span></h2>
+    <p class="reveal d1">One tap. A whole hub of games.</p>
+    <a class="btn btn-xl reveal d2" href="../">&#9654; Play Voxel Realms</a>
+  </div>
+</section>
+</main>
+
+<footer class="foot"><div class="wrap"><span class="brand"><span class="cube-ico"></span><b>Voxel<em>Realms</em></b></span><span>An infinite procedurally generated block world &middot; Build &middot; Survive &middot; Trade &middot; Fight</span><span><a href="../">Play</a> &middot; <a href="../admin/">Admin</a> &middot; <a href="#top">Top &uarr;</a></span></div></footer>
+
+<div class="lb" id="lb" hidden><button class="lb-x" id="lbx" aria-label="Close">&times;</button><button class="lb-n lb-p" id="lbp" aria-label="Previous">&#8249;</button><figure><img id="lbi" alt=""><figcaption id="lbc"></figcaption></figure><button class="lb-n lb-nx" id="lbn" aria-label="Next">&#8250;</button></div>
+<script src="site.js"></script>
+</body>
+</html>

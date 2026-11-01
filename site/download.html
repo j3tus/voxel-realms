@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Download Voxel Realms - desktop and Android apps</title>
+<meta name="description" content="Play Voxel Realms as an app: Windows, macOS, Linux and Android. Or just play in your browser, no install.">
+<meta name="theme-color" content="#060a12">
+<meta name="vr-repo" content="j3tus/voxel-realms">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="download.css">
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+<header class="nav scrolled"><a class="brand" href="./"><span class="cube-ico"></span><b>Voxel<em>Realms</em></b></a><nav class="links" style="display:flex"><a href="./">Home</a><a href="../">Play in browser</a></nav></header>
+<main class="dl">
+  <section class="hero-dl">
+    <h1>Get the <span class="grad">app</span></h1>
+    <p>The same game, in its own window. Pick a server, press Play. The app always loads the server's current version, so there is nothing to update.</p>
+    <div id="primary" class="primary"></div>
+    <p class="mut" id="detected"></p>
+  </section>
+  <section class="grid" id="grid" aria-label="All downloads">
+    <article class="card" data-os="windows"><h2>Windows</h2><p>Windows 10 / 11, 64-bit</p><a class="btn" data-asset="voxel-realms-windows-x64-setup.exe">Installer (.exe)</a><a class="alt" data-asset="voxel-realms-windows-x64.msi">.msi for IT deployment</a><small>Unsigned for now: Windows SmartScreen may warn. Choose "More info" then "Run anyway".</small></article>
+    <article class="card" data-os="macos"><h2>macOS</h2><p>Apple silicon and Intel</p><a class="btn" data-asset="voxel-realms-macos.dmg">Disk image (.dmg)</a><small>Unsigned for now: right-click the app, choose Open, then Open again on first launch.</small></article>
+    <article class="card" data-os="linux"><h2>Linux</h2><p>x86-64 desktops</p><a class="btn" data-asset="voxel-realms-linux-x64.AppImage">AppImage</a><a class="alt" data-asset="voxel-realms-linux-x64.deb">.deb (Debian, Ubuntu)</a><small>AppImage: make it executable (chmod +x) and run it.</small></article>
+    <article class="card" data-os="android"><h2>Android</h2><p>Phones and tablets, landscape</p><a class="btn" data-asset="voxel-realms-android.apk">Download APK</a><small>Allow "install unknown apps" for your browser when asked. Not on Google Play yet.</small></article>
+    <article class="card" data-os="ios"><h2>iPhone / iPad</h2><p>No app yet</p><a class="btn ghost" href="../">Play in Safari</a><small>Tip: Share, then "Add to Home Screen" for a full-screen icon.</small></article>
+  </section>
+  <section class="note">
+    <h2>First run</h2>
+    <ol><li>Open the app. Your server is listed with a green dot when it is online.</li><li>Press <b>Play</b>. To add another server, type its address and press Add.</li><li>Desktop: <b>Game &rarr; Switch server</b> (Ctrl/Cmd+Shift+S) brings the list back; F11 toggles fullscreen.</li></ol>
+    <p class="mut" id="ver"></p>
+  </section>
+</main>
+<script src="download.js"></script>
+</body>
+</html>

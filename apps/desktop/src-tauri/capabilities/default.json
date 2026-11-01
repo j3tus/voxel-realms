@@ -1,0 +1,1 @@
+{ "$schema": "../gen/schemas/desktop-schema.json", "identifier": "default", "description": "The picker window needs no native APIs; the menu is built in Rust.", "windows": ["main"], "permissions": [] }

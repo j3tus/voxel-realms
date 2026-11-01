@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# Voxel Realms - one script to install, run and look after the game server (everything runs in Docker).
+#   ./vr setup        interactive step-by-step setup (also: ./vr setup --yes [flags] for unattended installs)
+#   ./vr up | down | restart | status | logs [-f] | update | backup | password [new] | admin | url | loadtest on|off | uninstall
+# Unattended flags: --game-port N --admin-port N --data DIR --password PW|generate --admin local|tailscale --public none|tailscale|cloudflare --mem 2g --cpus 3
+set -euo pipefail
+cd "$(dirname "$(readlink -f "$0")")"
+ENVF=.env; NAME=voxel-realms
+if [ -t 1 ]; then B=$'\e[1m'; D=$'\e[2m'; G=$'\e[32m'; Y=$'\e[33m'; R=$'\e[31m'; C=$'\e[36m'; Z=$'\e[0m'; else B= D= G= Y= R= C= Z=; fi
+say() { printf '%s\n' "$*"; }; ok() { say "${G}✔${Z} $*"; }; warn() { say "${Y}!${Z} $*"; }; die() { say "${R}✘ $*${Z}" >&2; exit 1; }
+rnd() { LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-24}" || true; }
+getenv() { [ -f "$ENVF" ] && grep -m1 "^$1=" "$ENVF" | cut -d= -f2- || true; }
+setenv() { touch "$ENVF"; chmod 600 "$ENVF"; if grep -q "^$1=" "$ENVF"; then sed -i "s|^$1=.*|$1=$2|" "$ENVF"; else printf '%s=%s\n' "$1" "$2" >> "$ENVF"; fi; }
+unsetenv() { [ -f "$ENVF" ] && sed -i "/^$1=/d" "$ENVF" || true; }
+dc() { docker compose "$@"; }
+need_docker() {
+  command -v docker >/dev/null || die "Docker is not installed. Install it (https://docs.docker.com/engine/install/ , or: curl -fsSL https://get.docker.com | sh) and run ./vr setup again."
+  docker compose version >/dev/null 2>&1 || die "The 'docker compose' plugin is missing (apt install docker-compose-plugin)."
+  docker info >/dev/null 2>&1 || die "Cannot talk to Docker. Is it running, and is your user in the 'docker' group? (sudo usermod -aG docker \$USER, then log in again)"
+}
+port_free() { ! (ss -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "[:.]$1\$"); }
+lan_ip() { hostname -I 2>/dev/null | awk '{print $1}'; }
+ask() { # ask VAR "question" default   (non-interactive: keeps the default)
+  local v="$1" q="$2" d="$3" a; if [ "$YES" = 1 ]; then printf -v "$v" '%s' "$d"; return; fi
+  read -r -p "  $q ${D}[$d]${Z} " a || a=; printf -v "$v" '%s' "${a:-$d}"; }
+choose() { # choose VAR "question" default opt1 opt2 ...  -> numbered menu
+  local v="$1" q="$2" d="$3"; shift 3; local opts=("$@") i a
+  if [ "$YES" = 1 ]; then printf -v "$v" '%s' "$d"; return; fi
+  say "  $q"; for i in "${!opts[@]}"; do say "    $((i+1))) ${opts[$i]}"; done
+  while :; do read -r -p "  Choose 1-${#opts[@]} ${D}[default: $d]${Z} " a || a=; a="${a:-$d}"
+    case "$a" in ''|*[!0-9]*) ;; *) [ "$a" -ge 1 ] && [ "$a" -le "${#opts[@]}" ] && { printf -v "$v" '%s' "$a"; return; };; esac; say "  ${R}pick a number from the list${Z}"; done; }
+step() { say; say "${B}${C}Step $1/$TOTAL — $2${Z}"; say "${D}$3${Z}"; }
+
+cmd_setup() {
+  YES=0; TOTAL=7; local GP AP DATA PW ADM PUB MEM CPUS
+  GP=$(getenv VR_GAME_PORT); AP=$(getenv VR_ADMIN_PORT); DATA=$(getenv VR_DATA); PW=; ADM=; PUB=; MEM=$(getenv VR_MEM); CPUS=$(getenv VR_CPUS)
+  GP=${GP:-8080}; AP=${AP:-8185}; DATA=${DATA:-$PWD/data}; MEM=${MEM:-2g}; CPUS=${CPUS:-2}
+  local FA_ADM= FA_PUB=
+  while [ $# -gt 0 ]; do case "$1" in
+    --yes|-y) YES=1;; --game-port) GP=$2; shift;; --admin-port) AP=$2; shift;; --data) DATA=$2; shift;; --password) PW=$2; shift;;
+    --admin) FA_ADM=$2; shift;; --public) FA_PUB=$2; shift;; --mem) MEM=$2; shift;; --cpus) CPUS=$2; shift;; *) die "unknown option $1";; esac; shift; done
+  say "${B}Voxel Realms setup${Z}  ${D}(Ctrl-C to quit; nothing is changed until the final confirmation)${Z}"
+  step 1 "Check this machine" "Docker runs the game, so that is the only requirement."
+  need_docker; ok "Docker $(docker --version | awk '{print $3}' | tr -d ,) and Compose $(docker compose version --short) are working"
+  local MEMKB; MEMKB=$(awk '/MemTotal/{print $2}' /proc/meminfo); say "  RAM: $((MEMKB/1024)) MB, CPU cores: $(nproc)"
+  step 2 "Game port" "The port players connect to (open it on your router / reverse proxy / Funnel)."
+  while :; do ask GP "Game port" "$GP"; [[ $GP =~ ^[0-9]+$ ]] && [ "$GP" -ge 1 ] && [ "$GP" -le 65535 ] || { warn "not a valid port"; [ "$YES" = 1 ] && exit 1; continue; }
+    if docker ps --format '{{.Names}} {{.Ports}}' | grep -q "^$NAME .*:$GP->"; then break; fi
+    port_free "$GP" && break; warn "port $GP is already in use"; [ "$YES" = 1 ] && exit 1; done
+  step 3 "Where the world is stored" "Worlds, config and automatic backups. This folder is the only state the game has - back it up."
+  ask DATA "Data folder" "$DATA"; mkdir -p "$DATA"; [ -w "$DATA" ] || die "$DATA is not writable by $(id -un)"; DATA=$(readlink -f "$DATA")
+  step 4 "Admin password" "Protects the admin panel (live map, bots, rooms, bans). It is stored in $ENVF (mode 600); 12+ characters, no spaces or quotes."
+  if [ -z "$PW" ]; then local c; choose c "Admin password" 1 "Generate a strong one for me (recommended)" "I'll type my own"
+    if [ "${c:-1}" = 2 ]; then while :; do read -r -s -p "  Password: " PW; echo; [[ $PW =~ ^[A-Za-z0-9._@#%+=:,-]{12,}$ ]] && break; warn "need 12+ characters from A-Z a-z 0-9 . _ @ # % + = : , -"; done; else PW=generate; fi; fi
+  [ "$PW" = generate ] && { PW=$(rnd 24); NEWPW=1; } || NEWPW=0
+  [[ $PW =~ ^[A-Za-z0-9._@#%+=:,-]{12,}$ ]] || die "password must be 12+ characters from A-Z a-z 0-9 . _ @ # % + = : , -"
+  step 5 "Admin panel access" "The admin panel always runs on its OWN port, never on the public game port."
+  local c; case "$FA_ADM" in local) c=1;; tailscale) c=2;; *) c=;; esac
+  [ -z "$c" ] && choose c "Who can reach the admin panel?" $(command -v tailscale >/dev/null && echo 2 || echo 1) "This machine only - http://127.0.0.1:$AP/admin/ (use an SSH tunnel to reach it remotely)" "Privately over Tailscale - https://<machine>.ts.net:10000/admin/ (only your tailnet)"
+  ADM=$c; [ "$ADM" = 2 ] && ! command -v tailscale >/dev/null && { warn "tailscale not found, using 'this machine only'"; ADM=1; }
+  ask AP "Admin port (loopback)" "$AP"
+  step 6 "Public access for friends" "How people outside your network reach the game port."
+  case "$FA_PUB" in none) c=1;; tailscale) c=2;; cloudflare) c=3;; *) c=;; esac
+  [ -z "$c" ] && choose c "How should friends connect?" 1 "Just my network (LAN / VPN) - I'll sort port-forwarding myself" "Tailscale Funnel - public https URL, no router changes" "Cloudflare quick tunnel - temporary public https URL, no account"
+  PUB=$c; [ "$PUB" = 2 ] && ! command -v tailscale >/dev/null && { warn "tailscale not found, using 'my network'"; PUB=1; }
+  step 7 "Resource limits" "Caps for the container. The game also self-limits (bots, rooms) to what the machine can carry."
+  ask MEM "Memory limit (e.g. 1g, 2g, 4g)" "$MEM"; ask CPUS "CPU limit (cores)" "$CPUS"
+  say; say "${B}Review${Z}"
+  say "  Game      : port $GP  ->  http://$(lan_ip):$GP/"
+  say "  Data      : $DATA"
+  say "  Admin     : $([ "$ADM" = 2 ] && echo "private over Tailscale (admin port 127.0.0.1:$AP)" || echo "this machine only, http://127.0.0.1:$AP/admin/")"
+  say "  Public    : $([ "$PUB" = 2 ] && echo "Tailscale Funnel" || [ "$PUB" = 3 ] && echo "Cloudflare quick tunnel" || echo "my network only")"
+  say "  Limits    : $MEM memory, $CPUS cores"
+  if [ "$YES" != 1 ]; then local go; read -r -p "  Build and start now? [Y/n] " go || go=; case "${go:-y}" in [Nn]*) say "Nothing changed."; exit 0;; esac; fi
+  say; say "${B}Installing${Z}"
+  umask 077
+  setenv ADMIN_PASSWORD "$PW"; setenv VR_GAME_PORT "$GP"; setenv VR_ADMIN_PORT "$AP"; setenv VR_DATA "$DATA"; setenv VR_UID "$(id -u)"; setenv VR_GID "$(id -g)"; setenv VR_MEM "$MEM"; setenv VR_CPUS "$CPUS"
+  setenv VR_ADMIN_MODE "$([ "$ADM" = 2 ] && echo tailscale || echo local)"; setenv VR_PUBLIC "$([ "$PUB" = 2 ] && echo tailscale || [ "$PUB" = 3 ] && echo cloudflare || echo none)"
+  [ "$PUB" = 3 ] && setenv COMPOSE_PROFILES tunnel || unsetenv COMPOSE_PROFILES
+  dc build 2>&1 | tail -n 2; dc up -d --remove-orphans 2>&1 | tail -n 3
+  wait_healthy || { dc logs --tail 30 "$NAME"; die "the server did not become healthy (logs above)"; }
+  ok "Game server is up"
+  expose_tailscale
+  say; say "${B}${G}Done.${Z}"
+  say "  Play     : http://$(lan_ip):$GP/"
+  show_admin
+  [ "$PUB" = 3 ] && { sleep 6; say "  Friends  : $(tunnel_url || echo '(tunnel starting - run ./vr url in a moment)')"; }
+  [ "$PUB" = 2 ] && say "  Friends  : $(ts_host 2>/dev/null | sed 's|^|https://|' || true)/"
+  [ "${NEWPW:-0}" = 1 ] && say "  Admin password : ${B}$PW${Z}   ${D}(shown once; saved in $PWD/$ENVF - ./vr password to change)${Z}"
+  say "  Manage   : ./vr status | logs | update | backup | down"
+}
+wait_healthy() { local i; for i in $(seq 1 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' "$NAME" 2>/dev/null)" = healthy ] && return 0; sleep 2; done; return 1; }
+ts_host() { tailscale status --json 2>/dev/null | sed -n 's/.*"DNSName": *"\([^"]*\)\.".*/\1/p' | head -1; }
+expose_tailscale() {
+  local ap gp; ap=$(getenv VR_ADMIN_PORT); gp=$(getenv VR_GAME_PORT)
+  if [ "$(getenv VR_ADMIN_MODE)" = tailscale ]; then tailscale serve --bg --https=10000 "http://127.0.0.1:$ap" >/dev/null 2>&1 && ok "Admin is private on your tailnet (port 10000)" || warn "could not run: tailscale serve --bg --https=10000 http://127.0.0.1:$ap   (you may need: sudo tailscale set --operator=\$USER)"; fi
+  if [ "$(getenv VR_PUBLIC)" = tailscale ]; then tailscale funnel --bg "http://127.0.0.1:$gp" >/dev/null 2>&1 && ok "Public Tailscale Funnel enabled for the game port" || warn "could not run: tailscale funnel --bg http://127.0.0.1:$gp"; fi
+}
+show_admin() { if [ "$(getenv VR_ADMIN_MODE)" = tailscale ] && command -v tailscale >/dev/null; then say "  Admin    : https://$(ts_host):10000/admin/"; else say "  Admin    : http://127.0.0.1:$(getenv VR_ADMIN_PORT)/admin/"; fi; }
+tunnel_url() { dc logs cloudflared 2>/dev/null | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1; }
+need_installed() { [ -f "$ENVF" ] || die "Not set up yet. Run: ./vr setup"; need_docker; }
+
+cmd="${1:-}"; [ $# -gt 0 ] && shift || true
+case "$cmd" in
+  ''|help|-h|--help) if [ -z "$cmd" ] && [ ! -f "$ENVF" ]; then cmd_setup; else sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; fi;;
+  setup) cmd_setup "$@";;
+  up) need_installed; dc up -d --remove-orphans; wait_healthy && ok "up" || die "not healthy: ./vr logs";;
+  down) need_installed; dc down;;
+  restart) need_installed; dc restart "$NAME"; wait_healthy && ok "restarted" || die "not healthy: ./vr logs";;
+  status) need_installed; dc ps; curl -fsS "http://127.0.0.1:$(getenv VR_GAME_PORT)/api/info" 2>/dev/null | { jq -r '"version \(.version) · \(.worlds|length) worlds · \([.worlds[].players]|add) players online · capacity \(.capacity.level // "?")"' 2>/dev/null || cat; } || warn "game not answering"; show_admin;;
+  logs) need_installed; dc logs --tail 100 "$@" "$NAME";;
+  update) need_installed; [ -d .git ] && git pull --ff-only || warn "not a git checkout - using the files as they are"; dc build --pull; dc up -d --remove-orphans; wait_healthy && ok "updated" || die "not healthy: ./vr logs";;
+  backup) need_installed; d=$(getenv VR_DATA); mkdir -p backups; f="backups/voxel-realms-$(date +%Y%m%d-%H%M%S).tgz"; tar czf "$f" -C "$d" . && ok "$f ($(du -h "$f" | cut -f1))";;
+  password) need_installed; p="${1:-}"; [ -n "$p" ] || { p=$(rnd 24); gen=1; }; [[ $p =~ ^[A-Za-z0-9._@#%+=:,-]{12,}$ ]] || die "12+ characters from A-Z a-z 0-9 . _ @ # % + = : , -"
+    setenv ADMIN_PASSWORD "$p"; dc up -d --force-recreate "$NAME" >/dev/null; wait_healthy; ok "admin password changed"; [ "${gen:-0}" = 1 ] && say "  new password: ${B}$p${Z}";;
+  admin) need_installed; show_admin;;
+  url) need_installed; show_admin; say "  Play: http://$(lan_ip):$(getenv VR_GAME_PORT)/"; [ "$(getenv VR_PUBLIC)" = cloudflare ] && say "  Public: $(tunnel_url || echo 'tunnel not ready')"; [ "$(getenv VR_PUBLIC)" = tailscale ] && say "  Public: https://$(ts_host)/";;
+  loadtest) need_installed; case "${1:-}" in on) setenv MAX_PER_IP 1000; setenv WS_RATE 100000;; off) unsetenv MAX_PER_IP; unsetenv WS_RATE;; *) die "usage: ./vr loadtest on|off";; esac; dc up -d --force-recreate "$NAME" >/dev/null; wait_healthy; ok "load-test limits ${1}";;
+  uninstall) need_installed; read -r -p "Stop and remove the container and image? Your world data in $(getenv VR_DATA) is NOT deleted. [y/N] " a; case "$a" in [Yy]*) dc down --rmi local; ok "removed (data kept)";; *) say cancelled;; esac;;
+  *) die "unknown command '$cmd' - try ./vr help";;
+esac

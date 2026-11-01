@@ -1,0 +1,15 @@
+{
+  "name": "voxel-admin-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --port 3100",
+    "build": "nuxt generate && node scripts/externalize.mjs",
+    "deploy": "node scripts/deploy.mjs"
+  },
+  "dependencies": {
+    "nuxt": "^4.6.3",
+    "vue": "latest",
+    "vue-router": "latest"
+  }
+}

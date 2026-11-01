@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Voxel Realms">
+<meta name="theme-color" content="#070b12">
+<meta name="description" content="Voxel Realms - an infinite voxel sandbox with survival, an economy and multiplayer.">
+<title>Voxel Realms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="title">
+<div id="water"></div>
+<div id="cross"></div>
+<div id="hotbar" role="toolbar" aria-label="Hotbar"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="debug"></div>
+<div id="chat"><div id="chatlog" aria-live="polite"></div><input id="chatin" placeholder="Say something... (Enter to send, Esc to cancel)" maxlength="200" autocomplete="off" aria-label="Chat message"></div>
+<div id="plist"></div>
+<div id="net"></div>
+<canvas id="minimap" width="140" height="140" aria-hidden="true"></canvas>
+<div id="prompt"></div><div id="objective"></div><div id="hudinfo"></div><div id="keyhelp"></div>
+<div id="vitals"></div><div id="hurt"></div>
+<div id="wallet" title="Coins"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5c.4-1 1.4-1.5 2.5-1.5 1.5 0 2.5.8 2.5 2 0 2.5-5 1.5-5 4 0 1.2 1 2 2.5 2 1.1 0 2.1-.5 2.5-1.5M12 6v2m0 8v2"/></svg><b id="coins">0</b></div>
+<div id="death" class="overlay" style="display:none;z-index:8"><div class="card"><h1 style="background:none;-webkit-text-fill-color:#fb7185;color:#fb7185">You died</h1><div class="sub" id="deathmsg">Better luck next time.</div><button id="b-respawn">Respawn</button></div></div>
+
+<div id="menu" class="overlay title"><div class="shell railmode" id="shell">
+
+  <section class="page on" id="pg-main">
+    <h1 class="logo">Voxel<br>Realms<small>BUILD · SURVIVE · TRADE</small></h1>
+    <nav class="menu-list" aria-label="Main menu">
+      <button class="mi primary" id="b-play"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg><span>Singleplayer</span></button>
+      <button class="mi" id="b-mp"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span>Multiplayer</span></button>
+      <button class="mi" id="b-set"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
+      <button class="mi" id="b-help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/></svg><span>How to play</span></button>
+      <button class="mi" id="b-music"><svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zM20 16a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Music</span></button>
+      <button class="mi" id="b-log"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg><span>What's new</span></button>
+      <button class="mi" id="b-lobby" style="display:none"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg><span>Back to lobby</span></button>
+      <button class="mi" id="b-quit" style="display:none"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>Quit to title</span></button>
+    </nav>
+    <div id="mpbar"><span id="mpdot"></span><span id="mptxt"></span><button id="invite" class="ghost">Copy invite link</button><button id="reco" class="ghost" style="display:none">Reconnect</button></div>
+    <button class="playercard" id="b-player" aria-label="Change player">
+      <span class="sw" id="pcsw"></span><span><b id="pbtn"></b><span class="sm">Tap to change player &amp; skin</span></span>
+    </button>
+    <div class="foot" id="tagline">An infinite procedurally generated block world &middot; v2 &middot; <a href="/site/" target="_blank" rel="noopener">Website</a></div>
+  </section>
+
+  <section class="page" id="pg-single">
+    <div class="phead"><button class="ghost" data-go="main">&larr; Back</button><h2>Singleplayer</h2><button id="b-newworld">+ New world</button></div>
+    <div id="worldlist"></div>
+  </section>
+
+  <section class="page" id="pg-create">
+    <div class="phead"><button class="ghost" data-go="single">&larr; Back</button><h2>Create world</h2></div>
+    <div class="create-grid">
+      <div>
+        <label class="fld"><span>World name</span><input id="wname" maxlength="28" placeholder="My World" autocomplete="off"></label>
+        <label class="fld"><span>Seed</span><span class="inline"><input id="seedin" placeholder="leave blank for random" autocomplete="off"><button class="ghost" id="b-dice" title="Random seed" style="margin:0">&#127922; Roll</button></span></label>
+        <h3>Game mode</h3>
+        <div class="cards" id="modecards" role="radiogroup" aria-label="Game mode">
+          <button type="button" class="card2 on" data-mode="creative" role="radio" aria-checked="true"><b>Creative</b><span>Unlimited blocks, flight, no danger. Build anything.</span></button>
+          <button type="button" class="card2" data-mode="survival" role="radio" aria-checked="false"><b>Survival</b><span>Health, mining, crafting, villager trading &amp; bounties.</span></button>
+          <button type="button" class="card2" data-mode="career" role="radio" aria-checked="false"><b>Career</b><span>Survival with a ladder of contracts: earn coins, climb the ranks.</span></button>
+        </div>
+        <h3>Terrain</h3>
+        <div class="cards four" id="typecards" role="radiogroup" aria-label="Terrain">
+          <button type="button" class="card2 on" data-type="normal" role="radio" aria-checked="true"><b>Normal</b><span>Hills, rivers, forests</span></button>
+          <button type="button" class="card2" data-type="mountains" role="radio" aria-checked="false"><b>Mountains</b><span>Tall snowy peaks</span></button>
+          <button type="button" class="card2" data-type="islands" role="radio" aria-checked="false"><b>Islands</b><span>Archipelago</span></button>
+          <button type="button" class="card2" data-type="flat" role="radio" aria-checked="false"><b>Superflat</b><span>Build-friendly</span></button>
+        </div>
+        <details class="adv"><summary>World options</summary>
+          <div class="row"><span>NPCs (pigs, villagers)</span><input type="checkbox" id="opt-npc" checked></div>
+          <div class="row"><span>Hostile mobs at night</span><input type="checkbox" id="opt-hostile" checked></div>
+          <div class="row"><span>Dynamic weather</span><input type="checkbox" id="opt-weather" checked></div>
+          <div class="row" id="row-eco"><span>Economy &amp; trading</span><input type="checkbox" id="opt-eco" checked></div>
+          <div class="row"><span>Day length <b id="daylbl">7 min</b></span><input type="range" id="opt-day" min="60" max="1200" step="30" value="420"></div>
+          <div class="row"><span>Starting time</span><select id="opt-time"><option value="0.32">Morning</option><option value="0.5">Noon</option><option value="0.7">Dusk</option><option value="0.85">Night</option></select></div>
+        </details>
+        <input type="hidden" id="gentype" value="normal"><input type="hidden" id="genmode" value="creative">
+      </div>
+      <div class="create-right"><canvas id="prevworld" width="160" height="160" aria-label="World preview"></canvas><div class="sub" id="previnfo" style="margin:10px 0 0;font-size:12px"></div></div>
+    </div>
+    <div class="foot-actions"><button class="ghost" data-go="single" style="margin:0">Cancel</button><button id="b-create">Create world</button></div>
+  </section>
+
+  <section class="page" id="pg-mp">
+    <div class="phead"><button class="ghost" data-go="main">&larr; Back</button><h2>Multiplayer</h2><button class="ghost" id="b-refresh" title="Refresh servers">&#8635; Refresh</button></div>
+    <div class="who"><span>Playing as <b id="whoami"></b></span><button class="ghost" id="b-who" style="padding:5px 12px;font-size:12px;margin:0">Change</button></div><input id="nick" type="hidden">
+    <div class="toolbar">
+      <input id="srvsearch" type="search" placeholder="Search servers & worlds..." aria-label="Search servers">
+      <select id="srvsort" aria-label="Sort"><option value="ping">Lowest ping</option><option value="players">Most players</option><option value="name">Name</option></select>
+      <button class="ghost" id="b-quick" style="margin:0">&#9889; Quick join</button>
+    </div>
+    <div class="chips" id="srvfilters" role="group" aria-label="Filters"><span class="chip on" data-f="all">All</span><span class="chip" data-f="fav">&#9733; Favourites</span><span class="chip" data-f="players">Has players</span><span class="chip" data-f="survival">Survival</span><span class="chip" data-f="creative">Creative</span><span class="chip" data-f="economy">Economy</span></div>
+    <div id="srvlist" aria-live="polite"></div>
+    <div id="mperr"></div>
+    <details class="adv"><summary>Join by address</summary>
+      <div class="inline"><input id="direct" placeholder="host:8080 or my-tunnel.trycloudflare.com" aria-label="Server address"><button id="b-add" class="ghost">&#9733; Save</button><button id="b-join">Join</button></div>
+    </details>
+    <details class="adv"><summary>Scan local network</summary>
+      <div class="inline"><input id="scanpre" placeholder="192.168.1" style="max-width:150px" aria-label="Network prefix"><button id="b-scan" class="ghost">Scan port 8080</button></div>
+    </details>
+    <div class="sub" style="text-align:left;margin:12px 0 0;font-size:12px">Servers on this site and your favourites are detected automatically. Host your own with <code>npm start</code>.</div>
+  </section>
+
+  <section class="page" id="pg-players">
+    <div class="phead"><button class="ghost" data-go="main">&larr; Back</button><h2>Select player</h2></div>
+    <div class="pl-wrap">
+      <div><div id="pllist"></div><button class="big sec" id="b-pnew" style="margin-top:12px;margin-left:0">+ New player</button></div>
+      <div class="pl-edit"><canvas id="prevcv" width="480" height="600"></canvas>
+        <div class="row"><span>Name</span><input id="pname" maxlength="16" style="width:130px"></div>
+        <div class="row"><span>Shirt</span><input type="color" id="c-shirt"></div>
+        <div class="row"><span>Pants</span><input type="color" id="c-pants"></div>
+        <div class="row"><span>Skin</span><input type="color" id="c-skin"></div>
+        <div class="row"><span>Hair</span><input type="color" id="c-hair"></div>
+        <div class="inline"><button class="ghost" id="b-rand" style="margin-left:0">Randomize</button><button class="ghost" id="b-pdel">Delete</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="pg-set">
+    <div class="phead"><button class="ghost" data-go="main">&larr; Back</button><h2>Settings</h2></div>
+    <div class="tabs" role="tablist"><span data-tab="world" class="on" role="tab">World</span><span data-tab="video" role="tab">Graphics</span><span data-tab="ui" role="tab">Interface</span><span data-tab="audio" role="tab">Audio</span><span data-tab="ctrl" role="tab">Controls</span><span data-tab="keys" role="tab">Keybinds</span></div>
+    <div class="pane on" id="tab-world"></div><div class="pane" id="tab-video"><div class="chips" id="presets" style="margin-bottom:6px"></div></div><div class="pane" id="tab-ui"></div><div class="pane" id="tab-audio"></div><div class="pane" id="tab-ctrl"></div><div class="pane" id="tab-keys"></div>
+    <div style="margin-top:18px"><button class="ghost" id="b-resetcfg" style="margin-left:0">Reset all settings</button></div>
+  </section>
+
+  <section class="page" id="pg-music">
+    <div class="phead"><button class="ghost" data-go="main">&larr; Back</button><h2>Music</h2></div>
+    <div class="chips" id="mp-mode" role="group" aria-label="Music source"><span class="chip" data-m="game">Game music</span><span class="chip" data-m="real">Real music</span><span class="chip" data-m="off">Off</span></div>
+    <div id="mp-credits" aria-live="polite"></div>
+    <div class="mp-ctl"><button class="ghost" id="mp-prev" aria-label="Previous">&#9198;</button><button id="mp-pp" aria-label="Play or pause">&#9654;</button><button class="ghost" id="mp-next" aria-label="Next">&#9197;</button></div>
+    <div class="mp-add"><input id="mp-url" placeholder="Paste a YouTube link or an audio URL (.mp3 .ogg .m4a)" aria-label="Music link" autocomplete="off"><button id="mp-add">Add</button><label class="ghost filebtn">Add file<input type="file" id="mp-file" accept="audio/*" multiple hidden></label></div>
+    <div id="mp-msg" class="sub" style="text-align:left;margin:6px 0 10px"></div>
+    <div id="mp-list"></div>
+    <div class="sub" style="text-align:left;margin-top:12px;font-size:12px">YouTube tracks play in YouTube's own player, which stays visible bottom-left while they play, and every track shows its title, artist and source. Only use music you have the right to play. Your playlist is saved on this device.</div>
+  </section>
+
+  <section class="page" id="pg-help">
+    <div class="phead"><button class="ghost" data-go="main">&larr; Back</button><h2>How to play</h2></div>
+    <div class="keys" id="helpkeys"></div>
+    <div class="sub" style="text-align:left;margin-top:14px;font-size:12.5px">Left click breaks blocks or attacks. Right click places blocks or talks to villagers - they trade coins for resources in survival worlds. Zombies appear at night; storms roll in now and then. Rebind keys in Settings &rarr; Keybinds.</div>
+  </section>
+  <section class="page" id="pg-log">
+    <div class="phead"><button class="ghost" data-go="main">&larr; Back</button><h2>What's new</h2></div>
+    <div id="logbody"></div>
+    <div class="sub" style="text-align:left;margin-top:10px;font-size:11.5px">Dates before 30 Oct 2026 are approximate.</div>
+  </section>
+</div></div>
+
+<div id="nowplaying" aria-live="polite" style="display:none"></div>
+<div id="ytcard" style="display:none"><div class="yt-h"><span>YouTube player</span><button id="yt-close" class="ghost" aria-label="Stop music">&#10005; Stop</button></div><div id="ytbody"></div></div>
+<div id="inv" class="overlay" style="display:none"><div class="invwin">
+  <div class="invhead"><h2 id="invtitle">Creative inventory</h2><input id="invsearch" type="search" placeholder="Search..." aria-label="Search blocks"></div>
+  <div id="invtabs"></div>
+  <div class="invbody" id="invbody"><div id="grid"></div><div id="craft"></div></div>
+  <div id="invbar"></div>
+  <div class="sub" style="text-align:center;margin:12px 0 0;font-size:12px">Click an item to put it in the selected hotbar slot, or drag it onto a slot. Press E or Esc to close.</div>
+</div></div>
+
+<div id="modal" class="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mtitle"><header><h2 id="mtitle"></h2><button id="mclose" aria-label="Close">&times;</button></header><div id="mbody"></div><div id="mfoot"></div></div></div>
+<div id="tooltip"></div>
+<div id="load"><div class="load-bg"></div><div class="load-stars"></div><div class="lbox">
+  <div class="cubewrap"><div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="cube-shadow"></div></div>
+  <div class="logo load-logo">Voxel<br>Realms</div>
+  <div id="loadmsg">Generating world...</div>
+  <div class="bar"><i id="loadbar"></i></div><div id="loadpct">0%</div>
+  <div id="loadtip"></div>
+</div></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

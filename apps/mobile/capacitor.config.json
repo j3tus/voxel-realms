@@ -1,0 +1,7 @@
+{
+  "appId": "app.voxelrealms.mobile",
+  "appName": "Voxel Realms",
+  "webDir": "../launcher",
+  "backgroundColor": "#0b0f14",
+  "server": { "androidScheme": "https", "cleartext": true, "allowNavigation": ["*"] }
+}

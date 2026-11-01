@@ -1,0 +1,14 @@
+{
+  "name": "voxel-realms-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap sync android && cd android && ./gradlew assembleDebug",
+    "ios:add": "cap add ios && cap sync ios",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios"
+  },
+  "dependencies": { "@capacitor/android": "^7", "@capacitor/core": "^7", "@capacitor/ios": "^7" },
+  "devDependencies": { "@capacitor/cli": "^7" }
+}

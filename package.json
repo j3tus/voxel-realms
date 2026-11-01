@@ -1,0 +1,43 @@
+{
+  "name": "voxel-realms",
+  "version": "2.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Voxel Realms - a browser voxel sandbox with an authoritative multiplayer server and admin panel",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "serve": "npm run build && node server/index.js",
+    "test": "vitest run",
+    "stress": "node test/stress.mjs",
+    "bench": "node test/bench.mjs",
+    "build:wasm": "cargo build --release --target wasm32-unknown-unknown --manifest-path wasm/worldgen/Cargo.toml && cp wasm/worldgen/target/wasm32-unknown-unknown/release/vr_worldgen.wasm shared/wasm/worldgen.wasm"
+  },
+  "dependencies": {
+    "@fastify/compress": "^9.2.2",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^11.2.1",
+    "@fastify/static": "^10.1.7",
+    "@fastify/websocket": "^11.0.0",
+    "@tweenjs/tween.js": "^25.0.0",
+    "fastify": "^5.0.0",
+    "idb-keyval": "^6.3.0",
+    "three": "^0.170.0",
+    "voxel-aabb-sweep": "^0.5.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^5.0.5",
+    "eslint": "^10.13.0",
+    "fast-check": "^4.10.2",
+    "globals": "^17.13.0",
+    "playwright": "^1.64.1",
+    "vite": "^6.0.0",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

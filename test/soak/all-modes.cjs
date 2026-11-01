@@ -1,0 +1,18 @@
+// Runs all 11 bot games at once with one human each for N seconds (default 210). Server:  ADMIN_PASSWORD=testtoken123 MAX_PER_IP=60 PORT=8116 DATA_DIR=$(mktemp -d) npm start   then  node test/soak/all-modes.cjs 210
+const WS=require('ws'); const A={Authorization:'Bearer testtoken123','Content-Type':'application/json'}; const U='http://127.0.0.1:8116';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)); let fails=0; const ok=(n,c,x='')=>{ console.log(c?'PASS':'FAIL',n,x); if(!c) fails++; };
+const modes={pvp:'gunarena',tdm:'teamdeathmatch',gungame:'gungame',zombies:'zombies',raid:'bossraid',td:'towerdefence',royale:'battleroyale',hide:'hideandseek',ctf:'capturetheflag',snd:'searchanddestroy',bedwars:'bedwars'};
+(async()=>{ await fetch(U+'/api/admin/hub',{method:'POST',headers:A,body:'{}'}); await sleep(1500);
+ await fetch(U+'/api/admin/bots',{method:'PATCH',headers:A,body:JSON.stringify({skill:'hard'})});
+ const stats={}; const socks=[]; for(const [m,id] of Object.entries(modes)){ stats[m]={states:new Set(),maxTime:0,kills:0,msgs:0,board:0,extra:{}}; const ws=new WS('ws://127.0.0.1:8116/ws/'+id); ws.on('open',()=>ws.send(JSON.stringify({t:'hello',name:'Hu_'+m,uid:'u-'+m,skin:{}})));
+   ws.on('message',d=>{ try{ if(typeof d!=='string'&&d.length&&d[0]===3) return; const j=JSON.parse(d); stats[m].msgs++; if(j.t==='mg'){ stats[m].states.add(j.state); stats[m].board=Math.max(stats[m].board,(j.board||[]).length); if(j.boss) stats[m].extra.boss=j.boss.hp+'/'+j.boss.max; if(j.wave!==undefined) stats[m].extra.wave=j.wave; if(j.core!==undefined) stats[m].extra.core=j.core; if(j.zone) stats[m].extra.zone=Math.round(j.zone.r); if(j.score) stats[m].extra.score=JSON.stringify(j.score); if(j.teams) stats[m].extra.teams=JSON.stringify(j.teams); const k=(j.board||[]).reduce((a,b)=>a+(b.k||0),0); stats[m].kills=Math.max(stats[m].kills,k); } if(j.t==='kill') stats[m].kills++; }catch{} }); socks.push(ws); await sleep(150); }
+ const t0=Date.now(); let minTps=20; const DUR=+process.argv[2]||210;
+ while((Date.now()-t0)/1000<DUR){ await sleep(15000); const s=await (await fetch(U+'/api/admin/status',{headers:A})).json(); minTps=Math.min(minTps,s.tps); console.log(`t=${Math.round((Date.now()-t0)/1000)}s tps=${s.tps} tick=${s.tickMs.toFixed(1)}ms players=${s.players} bots=${s.bots} rss=${Math.round(s.rss/1048576)}MB cap=${s.capacity.level}/${s.capacity.scale}`); }
+ const s=await (await fetch(U+'/api/admin/status',{headers:A})).json();
+ for(const [m,v] of Object.entries(stats)){ const w=s.worlds.find(x=>x.id===modes[m]); console.log(m.padEnd(8),'states',[...v.states].join('>').padEnd(16),'bots',String(w.liveBots).padEnd(3),'board',v.board,'kills',String(v.kills).padEnd(4),JSON.stringify(v.extra).slice(0,90)); }
+ ok('every mode has bots filling it while a human plays',Object.values(modes).every(id=>s.worlds.find(x=>x.id===id).liveBots>0));
+ ok('every mode started a round (reached the play state)',Object.entries(stats).every(([m,v])=>v.states.has('play')),Object.entries(stats).filter(([m,v])=>!v.states.has('play')).map(x=>x[0]).join(','));
+ ok('server tick rate stayed at 20 with 11 games running',minTps>=19,String(minTps));
+ ok('tick time stayed under the 50 ms budget',s.tickMs<30,s.tickMs.toFixed(1));
+ socks.forEach(w=>w.close()); await sleep(3000); const e=await (await fetch(U+'/api/admin/status',{headers:A})).json(); ok('after everyone leaves: no humans and no bots remain',e.players===0&&e.bots===0,`players ${e.players} bots ${e.bots}`);
+ console.log(fails?'FAILS '+fails:'ALL PASS'); process.exit(fails?1:0); })().catch(e=>{ console.log('FAIL exception',e.message); process.exit(1); });

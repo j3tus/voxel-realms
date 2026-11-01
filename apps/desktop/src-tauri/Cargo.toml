@@ -1,0 +1,22 @@
+[package]
+name = "voxel-realms-desktop"
+version = "0.1.0"
+description = "Voxel Realms desktop app: a server picker that opens the game in a native window"
+edition = "2021"
+
+[lib]
+name = "voxel_realms_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "s"
+panic = "abort"
+strip = true
