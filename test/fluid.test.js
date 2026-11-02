@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Fluid, isWater, waterLevel, FLOW0 } from '../shared/fluid.js';
+import { Fluid, isWater, waterLevel } from '../shared/fluid.js';
 const mk = () => {
   const m = new Map(); const get = (x, y, z) => y < 0 ? 3 : (m.get(x + ',' + y + ',' + z) ?? (y === 0 ? 3 : 0));
   const f = new Fluid(get, (x, y, z, id) => m.set(x + ',' + y + ',' + z, id));

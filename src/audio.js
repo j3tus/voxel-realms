@@ -18,7 +18,7 @@ export function createAudio(cfg) {
   let ctx = null, unlocked = false, master, comp, busM, busS, busA, reverb, revSend, lowpass;
   let noise = null, layers = null, musicTimer = 0, musicMood = 'menu', musicOn = false, nextBeat = 0, beat = 0, chord = [0, 2, 4], moodChangedAt = 0;
   const listeners = [];
-  const vol = k => Math.max(0, Math.min(1.5, +cfg[k] ?? 1));
+  const vol = k => Math.max(0, Math.min(1.5, Number.isFinite(+cfg[k]) && cfg[k] != null ? +cfg[k] : 1));
   const ramp = (p, v, t = .25) => { try { p.setTargetAtTime(v, ctx.currentTime, t); } catch { /* context closed */ } };
 
   function build() {
