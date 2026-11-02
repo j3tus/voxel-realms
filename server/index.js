@@ -15,7 +15,7 @@ import { Parties } from './parties.js';
 import compress from '@fastify/compress';
 import { ROOT, DATA_DIR, safeId, hashToken, loadConfig, saveConfig, loadWorld, saveMeta, saveEditsSnapshot, dropLegacy, openJournal, ceToCompact, compactToCe, deleteWorld, backupWorld, listBackups, readBackup, checkToken } from './store.js';
 import { GameWorld } from './world.js';
-import { BotDirector, BOT_MODES } from './bots.js';
+import { BotDirector, BOT_MODES, sanitizeTuning } from './bots.js';
 import { computeCapacity, readMetrics, roomLoad } from './capacity.js';
 import { planAutoRooms, fitCustomGame, MODE_TITLE, ROOM_MODES } from './rooms.js';
 import { parseGame, HelloMsg } from './protocol.js';
@@ -58,7 +58,7 @@ const hooks = {
   log, event: e => pushAdmin(e), motd: () => config.motd, muted: p => config.mutes.includes(p.name.toLowerCase()),
   save: w => persist(w),
   createGame: (opts) => createPrivateGame(opts),
-  botsCfg: () => ({ enabled: config.bots.enabled, skill: config.bots.skill, density: config.bots.density, capDensity: capacity().botDensity }),
+  botsCfg: () => ({ enabled: config.bots.enabled, skill: config.bots.skill, density: config.bots.density, tuning: config.bots.tuning, capDensity: capacity().botDensity }),
   capacity: () => capacity(),
   rooms: () => roomList(), allWorlds: () => [...worlds.values()],
   findPlayer: name => { const q = String(name || '').toLowerCase(); if (!q) return null; let hit = null; for (const w of worlds.values()) for (const p of w.players.values()) { const n = p.name.toLowerCase().replace(/^\[bot\]\s*/, ''); if (p.name.toLowerCase() === q || n === q) return { w, p }; if (!hit && (n.startsWith(q) || p.name.toLowerCase().startsWith(q))) hit = { w, p }; } return hit; },
@@ -289,13 +289,14 @@ app.post('/api/admin/hub', admin, async (req) => {
 app.get('/api/admin/capacity', admin, async () => capacityJson());
 app.get('/api/admin/bots', admin, async () => ({ ...config.bots, capDensity: capacity().botDensity, total: [...worlds.values()].reduce((a, w) => a + w.botCount(), 0) }));
 app.patch('/api/admin/bots', admin, async (req) => {
-  const b = z.object({ enabled: z.boolean().optional(), skill: z.enum(['easy', 'normal', 'hard']).optional(), density: z.number().min(0).max(3).optional() }).parse(req.body || {});
+  const b = z.object({ enabled: z.boolean().optional(), skill: z.enum(['easy', 'normal', 'hard']).optional(), density: z.number().min(0).max(3).optional(), tuning: z.record(z.enum(['easy', 'normal', 'hard']), z.record(z.string(), z.number()).transform(sanitizeTuning)).optional() }).parse(req.body || {});
   Object.assign(config.bots, b); saveConfig(config); log('info', 'bot settings updated: ' + JSON.stringify(b)); if (b.enabled === false) for (const w of worlds.values()) w.bots?.clear(); return config.bots;
 });
 const botWorld = (req, reply) => { const w = worlds.get(safeId(req.params.id)); if (!w) { reply.code(404).send({ error: 'No such world' }); return null; } if (!BOT_MODES.includes(w.meta.mode)) { reply.code(400).send({ error: 'Bots do not play this mode' }); return null; } return w; };
 app.patch('/api/admin/worlds/:id/bots', admin, async (req, reply) => {
   const w = botWorld(req, reply); if (!w) return;
-  const b = z.object({ bots: z.number().int().min(0).max(32).nullable().optional(), skill: z.enum(['easy', 'normal', 'hard']).nullable().optional(), fixed: z.boolean().optional(), paused: z.boolean().optional() }).parse(req.body || {}), m = w.meta;
+  const b = z.object({ bots: z.number().int().min(0).max(32).nullable().optional(), skill: z.enum(['easy', 'normal', 'hard']).nullable().optional(), fixed: z.boolean().optional(), paused: z.boolean().optional(), tuning: z.record(z.string(), z.number()).nullable().optional() }).parse(req.body || {}), m = w.meta;
+  if (b.tuning !== undefined) { if (b.tuning === null) delete m.botTuning; else m.botTuning = sanitizeTuning(b.tuning); }
   if (b.bots !== undefined) { if (b.bots === null) delete m.bots; else m.bots = b.bots; }
   if (b.skill !== undefined) { if (b.skill === null) delete m.botSkill; else m.botSkill = b.skill; }
   if (b.fixed !== undefined) m.botsFixed = b.fixed; if (b.paused !== undefined) m.botsPaused = b.paused;

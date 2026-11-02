@@ -30,7 +30,7 @@ const DEFAULT_CONFIG = () => ({
   name: 'Voxel Realms Server', motd: 'Welcome! Build something great.', maxPlayers: 16, password: null,
   worlds: [{ id: 'main', name: 'Overworld', seed: (Math.random() * 1e9) | 0, type: 'normal', mode: 'creative', dayLength: 420, economy: false, mobs: true, hostile: true, maxPlayers: 16 }],
   bans: { names: [], ips: [], uids: [] }, ops: [], admin: null,
-  mutes: [], rooms: [], bots: { enabled: true, skill: 'normal', density: 1 }, maintenance: { on: false, msg: 'The server is under maintenance. Please try again soon.' }, allowlist: { on: false, names: [] },
+  mutes: [], rooms: [], bots: { enabled: true, skill: 'normal', density: 1, tuning: {} }, maintenance: { on: false, msg: 'The server is under maintenance. Please try again soon.' }, allowlist: { on: false, names: [] },
 });
 
 /** Loads config. Returns { config, newToken } - newToken is set only when an admin password was generated on this run. */

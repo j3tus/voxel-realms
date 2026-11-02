@@ -1,7 +1,7 @@
 // Extended chat / console commands. Called first by GameWorld.command(); returns true when it handled the command.
 // p is null for the admin console (always admin). `say` replies to the caller and returns the text for the console.
 import { MODE_TITLE, ROOM_MODES } from './rooms.js';
-import { BOT_MODES } from './bots.js';
+import { BOT_MODES, TUNABLE, sanitizeTuning } from './bots.js';
 
 const SKILLS = ['easy', 'normal', 'hard'], clock = t => Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
 const titleOf = m => MODE_TITLE[m] || m;
@@ -87,6 +87,13 @@ export function runExtra(w, p, raw, a, say, admin) {
         case 'count': case 'fill': { const n = num(rest[0]); if (n === null) { say('Usage: /bot count <n>  (total bots to keep while humans are playing)'); return true; } m.bots = Math.min(31, n); m.botsFixed = true; m.botsPaused = false; dir(); say(`Bots will fill this game to ${m.bots}.`); return true; }
         case 'auto': { delete m.bots; delete m.botsFixed; m.botsPaused = false; dir(); say('Bot fill is back to the automatic default.'); return true; }
         case 'skill': { const s = (rest[0] || '').toLowerCase(); if (!SKILLS.includes(s)) { say('Usage: /bot skill <easy|normal|hard>'); return true; } m.botSkill = s; say(`Bot skill set to ${s} (applies to automatic bots).`); return true; }
+        case 'tune': { // /bot tune                 show this world's settings
+          //            /bot tune <param> <v>    e.g. /bot tune react 0.4   |   /bot tune reset
+          const prof = dir().profile(null);
+          if (!rest.length) { say('Bot tuning: ' + Object.keys(TUNABLE).map(k => `${k}=${+prof[k].toFixed(3)} [${TUNABLE[k].join('-')}]`).join(', ')); return true; }
+          if (rest[0] === 'reset') { delete m.botTuning; say('Bot tuning reset to the skill preset.'); return true; }
+          const k = String(rest[0]).toLowerCase(), v = num(rest[1]); if (!TUNABLE[k] || v === null) { say('Usage: /bot tune <' + Object.keys(TUNABLE).join('|') + '> <value> | reset'); return true; }
+          m.botTuning = sanitizeTuning({ ...(m.botTuning || {}), [k]: v }); say(`Bot ${k} set to ${m.botTuning[k]} (range ${TUNABLE[k].join('-')}).`); return true; }
         case 'pause': { m.botsPaused = true; if (w.bots) while (w.bots.remove(false)); say('Automatic bots paused (summoned bots stay).'); return true; }
         case 'resume': { m.botsPaused = false; say('Automatic bots resumed.'); return true; }
         default: { const bots = [...w.players.values()].filter(q => q.bot); say(bots.length ? `${bots.length} bot(s): ` + bots.map(b => b.name.replace('[Bot] ', '') + (b.summoned ? '*' : '')).join(', ') + ' (* = summoned)' : 'No bots here.'); say(`Target: ${m.bots ?? 'auto'}${m.botsFixed ? ' (fixed)' : ''} · skill ${m.botSkill || 'default'}${m.botsPaused ? ' · PAUSED' : ''} · /help admin`); return true; }

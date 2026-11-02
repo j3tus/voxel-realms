@@ -9,6 +9,14 @@ export const BOT_MODES = ['pvp', 'tdm', 'gungame', 'zombies', 'raid', 'td', 'roy
 const TARGET = { pvp: 4, tdm: 6, gungame: 4, zombies: 2, raid: 3, td: 2, royale: 8, hide: 4, ctf: 6, snd: 6, bedwars: 4 };
 // react = seconds before a bot fires at a newly spotted target; rof = fire-interval multiplier (1 = the weapon's full rate)
 const SKILL = { easy: { err: .075, think: .5, fire: .6, speed: .8, react: .6, rof: 1.8 }, normal: { err: .035, think: .22, fire: .95, speed: .95, react: .28, rof: 1.2 }, hard: { err: .015, think: .12, fire: 1, speed: 1.05, react: .18, rof: 1.08 } };
+/** Tunable brain parameters and their allowed ranges (admin panel / config.bots.tuning / world meta / `/bot tune`). */
+export const TUNABLE = { err: [0, .3], think: [.03, 2], fire: [0, 1], speed: [.3, 1.6], react: [0, 2], rof: [1, 4] };
+/** keep only known numeric params, clamped to their range - bad config can never break a bot */
+export function sanitizeTuning(o) {
+  const out = {}; if (!o || typeof o !== 'object') return out;
+  for (const [k, [lo, hi]] of Object.entries(TUNABLE)) { const v = +o[k]; if (o[k] !== undefined && o[k] !== null && Number.isFinite(v)) out[k] = Math.min(hi, Math.max(lo, v)); }
+  return out;
+}
 const NAMES = ['Rex', 'Nova', 'Blitz', 'Echo', 'Ghost', 'Viper', 'Zed', 'Mako', 'Jinx', 'Onyx', 'Pixel', 'Rogue', 'Sable', 'Tank', 'Vex', 'Wraith'];
 const SKINS = [{ shirt: '#c0392b', pants: '#2c3e50', skin: '#e0b48f', hair: '#2b1d0e' }, { shirt: '#2980b9', pants: '#34495e', skin: '#c68642', hair: '#111111' }, { shirt: '#27ae60', pants: '#1e3a2a', skin: '#f1c27d', hair: '#7a4b1e' }, { shirt: '#8e44ad', pants: '#2d1b3d', skin: '#8d5524', hair: '#0b0b0b' }, { shirt: '#f39c12', pants: '#5d4037', skin: '#ffdbac', hair: '#a0522d' }];
 const fakeWs = () => ({ readyState: 1, bufferedAmount: 0, isAlive: true, send() {}, close() {}, terminate() {}, ping() { this.isAlive = true; } });
@@ -17,7 +25,10 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 export class BotDirector {
   constructor(world) { this.w = world; this.bots = []; this.fillT = 0; this.n = 0; }
   cfg() { return this.w.hooks.botsCfg?.() || { enabled: true, skill: 'normal', density: 1, capDensity: 1 }; }
-  skill() { return SKILL[this.w.meta.botSkill] || SKILL[this.cfg().skill] || SKILL.normal; }
+  tier(p) { const c = this.cfg(); return SKILL[p?.botSkill] ? p.botSkill : SKILL[this.w.meta.botSkill] ? this.w.meta.botSkill : SKILL[c.skill] ? c.skill : 'normal'; }
+  /** effective brain profile: tier preset < global per-tier tuning < this world's tuning */
+  profile(p) { const t = this.tier(p), c = this.cfg(); return { ...SKILL[t], ...sanitizeTuning(c.tuning?.[t]), ...sanitizeTuning(this.w.meta.botTuning) }; }
+  skill() { return this.profile(null); }
   humans() { let n = 0; for (const p of this.w.players.values()) if (!p.bot) n++; return n; }
   /** automatic bots only: summoned ones stay until an admin removes them (or the room empties) */
   auto() { return this.bots.filter(p => !p.summoned); }
@@ -56,7 +67,7 @@ export class BotDirector {
   }
   mobTargets() { const out = []; for (const m of this.w.sim.mobs.values()) out.push(m); return out; }
   think(p, dt, solid) {
-    const mg = this.w.mg, ai = p.ai, b = p.body, sk = SKILL[p.botSkill] || this.skill(), g = p.mg;
+    const mg = this.w.mg, ai = p.ai, b = p.body, sk = this.profile(p), g = p.mg;
     if (!g) return;
     if (Math.abs(p.x - b.x) > .9 || Math.abs(p.z - b.z) > .9 || Math.abs(p.y - b.y) > 2.5) { b.x = p.x; b.y = p.y; b.z = p.z; b.vx = b.vz = b.vy = 0; } // teleported (respawn / round start)
     if (!g.alive || (mg.state !== 'play' && mg.state !== 'lobby')) { b.vx = b.vz = 0; return; }
@@ -88,8 +99,14 @@ export class BotDirector {
     const k = Math.min(1, dt * 9); b.vx += (mx * speed - b.vx) * k; b.vz += (mz * speed - b.vz) * k;
     b.vy = Math.max(b.vy - 28 * dt, -40); const ivx = b.vx, ivz = b.vz, f = moveBody(solid, b, dt);
     if (b.onGround && ((f.x && Math.abs(ivx) > .5) || (f.z && Math.abs(ivz) > .5) || (ai.jumpT <= 0 && tgt && Math.random() < .004))) { b.vy = 8.4; ai.jumpT = .8; }
-    if (ml > .01 && (f.x || f.z) && b.onGround) ai.stuck += dt; else ai.stuck = Math.max(0, ai.stuck - dt * 2);
-    if (ai.stuck > .6) { ai.stuck = 0; ai.detourT = .9; ai.detourDir = Math.random() < .5 ? 1 : -1; }
+    // stuck = we want to move but barely did (works whether or not the body reports onGround)
+    const moved = Math.hypot(b.x - (ai.lx ?? b.x), b.z - (ai.lz ?? b.z)); ai.lx = b.x; ai.lz = b.z;
+    if (ml > .01 && moved < speed * dt * .25) ai.stuck += dt; else { ai.stuck = Math.max(0, ai.stuck - dt * 2); if (moved > speed * dt * .5) ai.stuckN = 0; }
+    if (ai.stuck > .5) {
+      ai.stuck = 0; ai.stuckN = (ai.stuckN || 0) + 1; ai.detourT = .7 + Math.min(1.5, ai.stuckN * .3); ai.detourDir = Math.random() < .5 ? 1 : -1;
+      b.vy = Math.max(b.vy, 8.4); ai.jumpT = .8; // hop: clears one-block lips and frees a body wedged on an edge
+      ai.wp = null; ai.wpT = 0; ai.t = 0; // and choose somewhere else to go
+    }
     p.x = b.x; p.y = b.y; p.z = b.z;
     // ---- facing
     const fx = hasAim ? aimX - b.x : mx, fz = hasAim ? aimZ - b.z : mz; if (Math.hypot(fx, fz) > .05) { const want = Math.atan2(-fx, -fz); let dy = want - p.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.yaw += dy * Math.min(1, dt * 12); }
