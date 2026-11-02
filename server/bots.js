@@ -7,7 +7,8 @@ import { WEAPONS, rayBlocks } from '../shared/weapons.js';
 export const BOT_MODES = ['pvp', 'tdm', 'gungame', 'zombies', 'raid', 'td', 'royale', 'hide', 'ctf', 'snd', 'bedwars'];
 /** default TOTAL players (humans + bots) a public game tries to keep */
 const TARGET = { pvp: 4, tdm: 6, gungame: 4, zombies: 2, raid: 3, td: 2, royale: 8, hide: 4, ctf: 6, snd: 6, bedwars: 4 };
-const SKILL = { easy: { err: .075, think: .55, fire: .5, speed: .8 }, normal: { err: .04, think: .3, fire: .8, speed: .95 }, hard: { err: .018, think: .16, fire: 1, speed: 1.05 } };
+// react = seconds before a bot fires at a newly spotted target; rof = fire-interval multiplier (1 = the weapon's full rate)
+const SKILL = { easy: { err: .075, think: .5, fire: .6, speed: .8, react: .6, rof: 1.8 }, normal: { err: .035, think: .22, fire: .95, speed: .95, react: .28, rof: 1.2 }, hard: { err: .015, think: .12, fire: 1, speed: 1.05, react: .18, rof: 1.08 } };
 const NAMES = ['Rex', 'Nova', 'Blitz', 'Echo', 'Ghost', 'Viper', 'Zed', 'Mako', 'Jinx', 'Onyx', 'Pixel', 'Rogue', 'Sable', 'Tank', 'Vex', 'Wraith'];
 const SKINS = [{ shirt: '#c0392b', pants: '#2c3e50', skin: '#e0b48f', hair: '#2b1d0e' }, { shirt: '#2980b9', pants: '#34495e', skin: '#c68642', hair: '#111111' }, { shirt: '#27ae60', pants: '#1e3a2a', skin: '#f1c27d', hair: '#7a4b1e' }, { shirt: '#8e44ad', pants: '#2d1b3d', skin: '#8d5524', hair: '#0b0b0b' }, { shirt: '#f39c12', pants: '#5d4037', skin: '#ffdbac', hair: '#a0522d' }];
 const fakeWs = () => ({ readyState: 1, bufferedAmount: 0, isAlive: true, send() {}, close() {}, terminate() {}, ping() { this.isAlive = true; } });
@@ -59,6 +60,7 @@ export class BotDirector {
     if (!g) return;
     if (Math.abs(p.x - b.x) > .9 || Math.abs(p.z - b.z) > .9 || Math.abs(p.y - b.y) > 2.5) { b.x = p.x; b.y = p.y; b.z = p.z; b.vx = b.vz = b.vy = 0; } // teleported (respawn / round start)
     if (!g.alive || (mg.state !== 'play' && mg.state !== 'lobby')) { b.vx = b.vz = 0; return; }
+    if (ai.target && ((ai.target.mg && !ai.target.mg.alive) || (ai.target.id !== undefined && !ai.target.mg && !this.w.sim.mobs.has(ai.target.id)))) { ai.target = null; ai.t = 0; ai.eng = 0; } // target died / despawned: re-plan now, don't shoot a corpse
     ai.t -= dt; ai.shootT -= dt; ai.strafeT -= dt; ai.jumpT -= dt;
     const coop = ['zombies', 'raid', 'td'].includes(mg.kind), hiderBot = mg.kind === 'hide' && mg.seeker !== p.id;
     if (ai.t <= 0) { // re-plan
@@ -66,6 +68,7 @@ export class BotDirector {
       const pool = coop ? this.mobTargets() : this.enemies(p); const eye = { x: b.x, y: b.y + 1.5, z: b.z };
       for (const q of pool) { const d = dist(q, b); if (d < bd && d < (coop ? 40 : 60)) { const ty = q.y + (q.mg ? 1.4 : (q.h || 1.8) * .55); const dx = q.x - eye.x, dy = ty - eye.y, dz = q.z - eye.z, l = Math.hypot(dx, dy, dz) || 1;
           if (rayBlocks((x, y, z) => this.w.getB(x, y, z), eye.x, eye.y, eye.z, dx / l, dy / l, dz / l, l - .4) >= l - .5) { best = q; bd = d; } else if (!best && d < 25 && !ai.wp) ai.wp = { x: q.x, z: q.z }; } } // no line of sight: head that way anyway
+      if ((best && best.id) !== (ai.target && ai.target.id)) ai.eng = 0; // new target: reaction timer restarts
       ai.target = best; ai.bd = bd; ai.obj = mg.kind === 'snd' || mg.kind === 'ctf' ? this.objective(p, mg) : null; if (!best && (!ai.wp || ai.wpT <= 0)) { ai.wp = this.objective(p, mg) || { x: mg.cx + (Math.random() * 2 - 1) * 11, z: mg.cz + (Math.random() * 2 - 1) * 11 }; ai.wpT = 3 + Math.random() * 3; }
     }
     ai.wpT -= dt;
@@ -93,13 +96,17 @@ export class BotDirector {
     p.pitch = hasAim ? Math.asin(Math.max(-1, Math.min(1, (aimY - (b.y + 1.5)) / (Math.hypot(aimX - b.x, aimY - (b.y + 1.5), aimZ - b.z) || 1)))) : 0;
     p.st = !b.onGround ? 1 : Math.hypot(b.vx, b.vz) > 6 ? 3 : 0;
     // ---- shooting
-    if (hasAim && ai.shootT <= 0 && mg.fps && mg.state === 'play' && Math.random() < sk.fire) {
+    if (hasAim) ai.eng = (ai.eng || 0) + dt; else ai.eng = 0;
+    if (hasAim && ai.shootT <= 0 && ai.eng >= sk.react && mg.fps && mg.state === 'play' && Math.random() < sk.fire) {
       const lock = mg.gunLock(p); if (lock === -2) return;
       const d3 = Math.hypot(aimX - b.x, aimY - (b.y + 1.5), aimZ - b.z); let wi = lock >= 0 ? lock : d3 < 9 ? 2 : d3 < 38 ? 1 : 3; if (lock < 0 && Math.random() < .12) wi = 0;
       if (g.ammo[wi] <= 0) { const alt = g.ammo.findIndex(a => a > 0); if (lock < 0 && alt >= 0) wi = alt; else { mg.reload(p, wi); ai.shootT = .5; return; } }
-      const wp = WEAPONS[wi], err = sk.err + d3 * .0009, ex = (Math.random() - .5) * err * 2, ey = (Math.random() - .5) * err * 2, ez = (Math.random() - .5) * err * 2;
+      const eyeY = b.y + 1.5, ll = Math.hypot(aimX - b.x, aimY - eyeY, aimZ - b.z) || 1;
+      if (rayBlocks((x, y, z) => this.w.getB(x, y, z), b.x, eyeY, b.z, (aimX - b.x) / ll, (aimY - eyeY) / ll, (aimZ - b.z) / ll, ll - .5) < ll - .6) { ai.t = 0; return; } // wall in the way: don't waste ammo, look for a new target
+      const wp = WEAPONS[wi], settle = 1 + 1.5 * Math.max(0, 1 - (ai.eng - sk.react) / 1.0), err = (sk.err + d3 * .0009) * settle, // aim tightens over the first second on target
+        ex = (Math.random() - .5) * err * 2, ey = (Math.random() - .5) * err * 2, ez = (Math.random() - .5) * err * 2;
       const dx = aimX - b.x + ex * d3, dy = aimY - (b.y + 1.5) + ey * d3, dz = aimZ - b.z + ez * d3, l = Math.hypot(dx, dy, dz) || 1;
-      mg.shoot(p, { t: 'shoot', w: wi, dx: dx / l, dy: dy / l, dz: dz / l }); ai.shootT = wp.rate * (1.25 + Math.random() * .7) + (wp.auto ? 0 : .15);
+      mg.shoot(p, { t: 'shoot', w: wi, dx: dx / l, dy: dy / l, dz: dz / l }); ai.shootT = wp.rate * (sk.rof + Math.random() * .35) + (wp.auto ? 0 : .05);
     }
   }
   /** mode objectives so bots do more than deathmatch */
