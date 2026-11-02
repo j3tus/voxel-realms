@@ -29,6 +29,8 @@ const mkGroup = () => ({ pos: new FBuf(), nrm: new FBuf(), uv: new FBuf(), col: 
 const finish = g => g.idx.n ? { pos: g.pos.out(), nrm: g.nrm.out(), uv: g.uv.out(), col: g.col.out(), blk: g.blk.out(), sky: g.sky.out(), idx: g.idx.out(g.v) } : null;
 
 /** nbrs: array(9) of Uint8Array|null, index (dz+1)*3+(dx+1); nbrs[4] is the chunk itself. */
+let LIGHT_BUF = null, LIGHT_Q = new Int32Array(1 << 15);
+const grow = q => { const n = new Int32Array(q.length * 2); n.set(q); return n; };
 export function meshChunk(nbrs, maxY) {
   const self = nbrs[4];
   const get = (x, y, z) => {
@@ -53,25 +55,27 @@ export function meshChunk(nbrs, maxY) {
   };
 
   // ---- block light (only if a light source is inside the 3x3 neighbourhood) ----
-  let light = null, LW = 48;
-  let hasEmitter = false; for (let i = 0; i < 9 && !hasEmitter; i++) { const d = nbrs[i]; if (d) for (const e of [28]) if (d.includes(e)) { hasEmitter = true; break; } }
+  // Buffers are module-level and reused (the mesher is synchronous, so this is safe) to avoid per-mesh allocation.
+  let light = null; const LW = 48;
+  let hasEmitter = false; for (let i = 0; i < 9 && !hasEmitter; i++) { const d = nbrs[i]; if (d && d.indexOf(28) !== -1) hasEmitter = true; }
   if (hasEmitter) {
-    light = new Uint8Array(LW * LW * CH); const q = [];
+    if (!LIGHT_BUF || LIGHT_BUF.length !== LW * LW * CH) LIGHT_BUF = new Uint8Array(LW * LW * CH);
+    light = LIGHT_BUF; light.fill(0); let qn = 0;
     for (let nz = 0; nz < 3; nz++) for (let nx = 0; nx < 3; nx++) {
-      const d = nbrs[nz * 3 + nx]; if (!d) continue;
+      const d = nbrs[nz * 3 + nx]; if (!d || d.indexOf(28) === -1) continue;
       for (let y = 0; y < CH; y++) for (let z = 0; z < 16; z++) for (let x = 0; x < 16; x++) {
-        const e = EMISSIVE[d[x + 16 * (z + 16 * y)]]; if (e) { const gx = nx * 16 + x, gz = nz * 16 + z, i = (gz * LW + gx) * CH + y; light[i] = e; q.push(i); }
+        const e = EMISSIVE[d[x + 16 * (z + 16 * y)]]; if (e) { const i = ((nz * 16 + z) * LW + nx * 16 + x) * CH + y; light[i] = e; if (qn >= LIGHT_Q.length) LIGHT_Q = grow(LIGHT_Q); LIGHT_Q[qn++] = i; }
       }
     }
-    for (let h = 0; h < q.length; h++) {
-      const i = q[h], l = light[i] - 1; if (l <= 0) continue; const y = i % CH, c = (i - y) / CH, gx = c % LW, gz = (c - gx) / LW;
-      const tryN = (nx, ny, nz) => {
-        if (nx < 0 || nz < 0 || nx >= LW || nz >= LW || ny < 0 || ny >= CH) return;
-        const ni = (nz * LW + nx) * CH + ny; if (light[ni] >= l) return;
-        const id = nbrs[(nz >> 4) * 3 + (nx >> 4)]?.[(nx & 15) + 16 * ((nz & 15) + 16 * ny)] ?? 0; if (OPAQUE[id]) return;
-        light[ni] = l; q.push(ni);
-      };
-      tryN(gx - 1, y, gz); tryN(gx + 1, y, gz); tryN(gx, y - 1, gz); tryN(gx, y + 1, gz); tryN(gx, y, gz - 1); tryN(gx, y, gz + 1);
+    const tryN = (nx, ny, nz, l) => {
+      if (nx < 0 || nz < 0 || nx >= LW || nz >= LW || ny < 0 || ny >= CH) return;
+      const ni = (nz * LW + nx) * CH + ny; if (light[ni] >= l) return;
+      const id = nbrs[(nz >> 4) * 3 + (nx >> 4)]?.[(nx & 15) + 16 * ((nz & 15) + 16 * ny)] ?? 0; if (OPAQUE[id]) return;
+      light[ni] = l; if (qn >= LIGHT_Q.length) LIGHT_Q = grow(LIGHT_Q); LIGHT_Q[qn++] = ni;
+    };
+    for (let h = 0; h < qn; h++) {
+      const i = LIGHT_Q[h], l = light[i] - 1; if (l <= 0) continue; const y = i % CH, c = (i - y) / CH, gx = c % LW, gz = (c - gx) / LW;
+      tryN(gx - 1, y, gz, l); tryN(gx + 1, y, gz, l); tryN(gx, y - 1, gz, l); tryN(gx, y + 1, gz, l); tryN(gx, y, gz - 1, l); tryN(gx, y, gz + 1, l);
     }
   }
   const lightAt = (x, y, z) => { // local chunk coords (may be -16..31)

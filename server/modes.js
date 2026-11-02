@@ -21,6 +21,7 @@ const TDM_KILLS = 30;
 const TEAMS = ['RED', 'BLUE'];
 const PVP_KILLS = 15, PVP_TIME = 240, SPLEEF_TIME = 180, LOBBY = 8, END = 7, RESPAWN = 3;
 
+const HIT_HW = .42; // slightly wider than the 0.6 body: forgives client/server latency on moving targets
 export class Minigame {
   constructor(world) {
     this.w = world; this.kind = world.meta.mode; this.fps = FPS_MODES.includes(this.kind); this.winTeam = -1; this.state = 'lobby'; this.t = LOBBY; this.winner = ''; this.built = false; this.round = 0;
@@ -123,7 +124,7 @@ export class Minigame {
       let best = rayBlocks(this.w.getB.bind(this.w), ox, oy, oz, ux, uy, uz, wp.range), hit = null, head = false, mobHit = null;
       for (const q of this.list()) {
         if (q === p || !q.mg.alive || !this.canHit(p, q)) continue;
-        const t = rayBox(ox, oy, oz, ux, uy, uz, q.x - .3, q.y, q.z - .3, q.x + .3, q.y + 1.8, q.z + .3);
+        const t = rayBox(ox, oy, oz, ux, uy, uz, q.x - HIT_HW, q.y - .05, q.z - HIT_HW, q.x + HIT_HW, q.y + 1.85, q.z + HIT_HW);
         if (t >= 0 && t < best) { best = t; hit = q; head = oy + uy * t > q.y + 1.4; }
       }
       for (const mb of this.w.sim.mobs.values()) {

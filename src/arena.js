@@ -9,7 +9,7 @@ const TEAM_COL = ['#ff6b6b', '#5aa9ff'], TEAM_NAME = ['RED', 'BLUE'];
 
 export function createArena(ctx) {
   const { THREE, scene, camera, canvas } = ctx;
-  const st = { gw: -1, team: 0, mg: null, hp: 20, ammo: WEAPONS.map(w => w.mag), w: 0, reloadUntil: 0, lastShot: 0, down: false, alive: true, tracers: [], feed: [] };
+  const st = { gw: -1, team: 0, mg: null, hp: 20, ammo: WEAPONS.map(w => w.mag), w: 0, reloadUntil: 0, lastShot: 0, kick: 0, down: false, alive: true, tracers: [], feed: [] };
   const el = (tag, css, parent = document.body) => { const e = document.createElement(tag); e.style.cssText = css; parent.append(e); return e; };
   const base = 'position:fixed;z-index:6;pointer-events:none;font:600 14px system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px #000a;';
   const root = el('div', 'display:none');
@@ -100,7 +100,7 @@ export function createArena(ctx) {
     if (st.ammo[st.w] <= 0) { ctx.send({ t: 'reload', w: st.w }); return; }
     st.lastShot = now; st.ammo[st.w]--; const d = new THREE.Vector3(); camera.getWorldDirection(d);
     ctx.send({ t: 'shoot', w: st.w, dx: d.x, dy: d.y, dz: d.z });
-    gun.position.z = -.4; flashMat.opacity = 1; ctx.sfx(wp.id === 'sniper' ? 70 : wp.id === 'shotgun' ? 90 : 220, .08, 'square', .08);
+    gun.position.z = -.4; flashMat.opacity = 1; st.kick += wp.recoil || 0; ctx.P.pitch = Math.min(1.55, ctx.P.pitch + (wp.recoil || 0)); ctx.P.yaw += (Math.random() - .5) * (wp.recoil || 0) * .5; ctx.sfx(wp.id === 'sniper' ? 70 : wp.id === 'shotgun' ? 90 : 220, .08, 'square', .08);
   }
   const nextWeapon = () => setWeapon((st.w + 1) % WEAPONS.length);
   function setWeapon(i) { if (st.gw >= 0) return; if (i >= 0 && i < WEAPONS.length && i !== st.w) { st.w = i; st.lastShot = performance.now() + 150; } }
@@ -125,6 +125,7 @@ export function createArena(ctx) {
     frame(dt) {
       for (let i = st.tracers.length - 1; i >= 0; i--) { const t = st.tracers[i]; t.t += dt; t.l.material.opacity = Math.max(0, .9 - t.t * 8); if (t.t > .12) { scene.remove(t.l); tracerPool.push(t.l); st.tracers.splice(i, 1); } }
       gun.position.z += (-.5 - gun.position.z) * Math.min(1, dt * 18); flashMat.opacity = Math.max(0, flashMat.opacity - dt * 14);
+      if (st.kick > 1e-4) { const r = st.kick * Math.min(1, dt * 9); st.kick -= r; ctx.P.pitch = Math.max(-1.55, ctx.P.pitch - r * .7); } // recoil settles back mostly to where you aimed
       if (st.down && WEAPONS[st.w].auto) shoot();
       st.feed = st.feed.filter(f => performance.now() - f.at < 5000); setH(feed, st.feed.map(f => f.html).join('<br>'));
       hud();
