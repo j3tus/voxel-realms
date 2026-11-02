@@ -20,12 +20,12 @@ const join=(w,n)=>new Promise(res=>{ const ws=new WS('ws://127.0.0.1:8110/ws/'+w
  const w=st.j.worlds.find(x=>x.id==='teamdeathmatch'); ok('summon of 1,000,000 bots was capped (no resource exhaustion)',(w.liveBots||0)<=40,'bots='+w.liveBots);
  const big=await req('GET','/api/admin/worlds/main/map?x0=-1e9&z0=-1e9&x1=1e9&z1=1e9',null,A); ok('map endpoint with an absurd window stays bounded',big.s===200&&(!big.j.chunks||big.j.chunks.length<=1500),String(big.j.chunks&&big.j.chunks.length));
  // 5. command privilege checks and escaping
- const a=await join('lobby','Alice'), b=await join('teamdeathmatch','Bob'); const say=async(r,t)=>{ r.chat.length=0; r.ws.send(JSON.stringify({t:'chat',text:t})); await sleep(1250); return r.chat.join(' | '); };
+ const a=await join('lobby','Alice'); await join('teamdeathmatch','Bob'); const say=async(r,t)=>{ r.chat.length=0; r.ws.send(JSON.stringify({t:'chat',text:t})); await sleep(1250); return r.chat.join(' | '); };
  for (const c of ['/bot add 3','/bot clear','/kick Bob','/ban Bob','/op Alice','/round start','/room create tdm 8 2','/announce hi','/capacity','/status','/heal Bob','/bring Bob','/mute Bob','/unban x','/time night','/weather storm','/give Alice 999','/spawn boss 5','/kill mobs','/tp 0 0 0','/save']) { const o=await say(a,c); if(!/operator|rights|permission|cannot|only/i.test(o)) ok('non-op denied: '+c,false,o.slice(0,80)); }
  ok('non-operators are denied every operator command (21 checked)',true);
  const aliceCoins=(await req('GET','/api/admin/players',null,A)).j.find(p=>p.name==='Alice'); ok('/give by a non-op did not change coins',aliceCoins&&aliceCoins.coins<=25,String(aliceCoins&&aliceCoins.coins));
  const m1=await say(a,'/msg Bob <img src=x onerror=alert(1)>'); ok('/msg to a normal player works and is plain text',/Bob/.test(m1)||true);
- const flood=[]; for(let i=0;i<60;i++) a.ws.send(JSON.stringify({t:'chat',text:'/rooms'})); await sleep(1500); ok('command flood does not crash the server',(await req('GET','/api/health')).s===200);
+ for(let i=0;i<60;i++) a.ws.send(JSON.stringify({t:'chat',text:'/rooms'})); await sleep(1500); ok('command flood does not crash the server',(await req('GET','/api/health')).s===200);
  // 6. /create abuse
  let created=0; for(let i=0;i<8;i++){ const o=await say(a,'/create tdm 16 15 hard public'); if(/Created/.test(o)) created++; await sleep(150); } ok('one custom game per player even when spamming /create',created<=1,'created '+created);
  const o2=await say(a,'/create tdm 99999 99999 hard'); ok('absurd /create is trimmed or refused, never crashes',(await req('GET','/api/health')).s===200,o2.slice(0,70));

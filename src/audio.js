@@ -16,7 +16,7 @@ export const MOODS = {
 
 export function createAudio(cfg) {
   let ctx = null, unlocked = false, master, comp, busM, busS, busA, reverb, revSend, lowpass;
-  let noise = null, layers = null, musicTimer = 0, musicMood = 'menu', musicOn = false, nextBeat = 0, beat = 0, chord = [0, 2, 4], moodChangedAt = 0;
+  let noise = null, layers = null, musicTimer = 0, musicMood = 'menu', musicOn = false, nextBeat = 0, beat = 0, chord = [0, 2, 4];
   const listeners = [];
   const vol = k => Math.max(0, Math.min(1.5, Number.isFinite(+cfg[k]) && cfg[k] != null ? +cfg[k] : 1));
   const ramp = (p, v, t = .25) => { try { p.setTargetAtTime(v, ctx.currentTime, t); } catch { /* context closed */ } };
@@ -91,7 +91,7 @@ export function createAudio(cfg) {
     ramp(lowpass.frequency, env.under ? 520 : env.cave > .6 ? 4200 : 20000, .25);
     // music follows the situation
     const mood = env.combat ? 'combat' : env.lobby ? 'lobby' : env.cave > .6 ? 'cave' : env.night > .5 ? 'night' : env.started ? 'day' : 'menu';
-    if (mood !== musicMood) { musicMood = mood; moodChangedAt = ctx.currentTime; }
+    if (mood !== musicMood) { musicMood = mood; }
   }
 
   /* ---------- one-shots ---------- */

@@ -5,7 +5,7 @@ import { WEAPONS } from '../shared/weapons.js';
 import { Minigame, ARENA_MODES, FPS_MODES } from './modes.js';
 
 export { ARENA_MODES, FPS_MODES };
-const R = 14, LOBBY = 8, END = 7, RESPAWN = 3;
+const R = 14, LOBBY = 8;
 const fullAmmo = () => WEAPONS.map(x => x.mag);
 const dist2 = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
 

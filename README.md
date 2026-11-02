@@ -70,7 +70,7 @@ npm test               # unit tests
 
 ## Security
 
-* Strict **CSP** and security headers (`@fastify/helmet`); no inline scripts; `eval` is never allowed (the test hook is behind `?e2e=1` + `VR_E2E`).
+* Strict **CSP** and security headers (`@fastify/helmet`); no inline scripts; `eval` is never allowed (the test hook is compiled in only by `VITE_E2E=1 npm run build`, and still needs `?e2e=1` + `VR_E2E` at runtime).
 * **Admin**: bearer token (scrypt-hashed, constant-time compare), per-IP brute-force lockout, rate limits, token never in URLs
   (the live stream authenticates with its first message), all panel text inserted with `textContent`.
 * **Game socket**: zod validation of every message, 64 KB frame cap, flood guard, per-IP connection cap, hello timeout, heartbeat,

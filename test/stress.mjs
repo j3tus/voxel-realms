@@ -36,7 +36,7 @@ const bots = [];
 function bot(world, i, mode) {
   return new Promise(res => {
     const ws = new WebSocket(`${WSBASE}/ws/${world}`, { perMessageDeflate: true }); const b = { ws, id: 0, x: 0, y: 0, z: 0, t0: Date.now(), done: false }; const timers = [];
-    ws.on('open', () => ws.send(JSON.stringify({ t: 'hello', name: 'Bot' + i, uid: 'u' + world + i })));
+    ws.on('open', () => ws.send(JSON.stringify({ t: 'hello', name: 'Bot' + i, uid: 'u' + world + i, v: 2, q: process.env.NO_COMPACT ? 0 : 1 })));
     ws.on('message', (d, isBin) => {
       stats.recv++; stats.bytes += d.length;
       if (isBin) { stats.kinds.state = (stats.kinds.state || 0) + d.length; stats.states++; stats.stateBytes += d.length; return; }

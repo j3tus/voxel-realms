@@ -8,9 +8,9 @@ const sparse = (x, y, z) => y <= 10 || hash(x, y, z) < 0.18;
 
 if (isMainThread) {
   const secs = +process.argv[2] || 10, counter = new Int32Array(new SharedArrayBuffer(4)), info = new Uint8Array(new SharedArrayBuffer(512));
-  const w = new Worker(new URL(import.meta.url), { workerData: { counter, info } });
+  new Worker(new URL(import.meta.url), { workerData: { counter, info } });
   let last = -1, stuck = 0; const t0 = Date.now();
-  const iv = setInterval(() => {
+  setInterval(() => {
     const c = Atomics.load(counter, 0);
     if (c === last) { if (++stuck >= 3) { const txt = new TextDecoder().decode(info.slice(0, info.indexOf(0))); console.log(`HANG after ${c} moves. Input: ${txt}`); process.exit(1); } } else { stuck = 0; last = c; }
     if (Date.now() - t0 > secs * 1000) { console.log(`no hang in ${last} moves`); process.exit(0); }

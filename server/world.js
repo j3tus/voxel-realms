@@ -4,6 +4,7 @@ import { CS, CH, STONE, BLOCK_COUNT, RECIPES, dropOf } from '../shared/blocks.js
 import { Fluid, isWater } from '../shared/fluid.js';
 import { makeWorldGen } from './gen.js';
 import { MobSim, MOB_TYPES, MOB } from '../shared/mobs.js';
+import { encodeState } from '../shared/netframe.js';
 import { addEdit, countEdits } from './store.js';
 import { makeMinigame, ARENA_MODES } from './modes2.js';
 import { BotDirector, BOT_MODES } from './bots.js';
@@ -109,7 +110,7 @@ export class GameWorld {
     const hex = v => /^#[0-9a-fA-F]{6}$/.test(v) ? v : null, sk = hello.skin && typeof hello.skin === 'object' ? { shirt: hex(hello.skin.shirt), pants: hex(hello.skin.pants), skin: hex(hello.skin.skin), hair: hex(hello.skin.hair) } : null;
     const uid = String(hello.uid || ('anon-' + ip)).replace(/[^\w-]/g, '').slice(0, 40);
     let pid; do { pid = this.nextId = (this.nextId % 65535) + 1; } while (this.players.has(pid)); // u16 ids for binary frames
-    const p = { id: pid, ws, name, uid, skin: sk, ip, op: false, x: this.spawn[0], y: this.spawn[1], z: this.spawn[2], yaw: 0, pitch: 0, joined: Date.now(), msgs: 0, blocks: 0, hits: 0, rateT: Date.now(), dead: false };
+    const p = { id: pid, ws, name, uid, skin: sk, ip, op: false, x: this.spawn[0], y: this.spawn[1], z: this.spawn[2], yaw: 0, pitch: 0, compact: hello.q >= 1, joined: Date.now(), msgs: 0, blocks: 0, hits: 0, rateT: Date.now(), dead: false };
     if (hello.bot) p.bot = true;
     this.players.set(p.id, p); this.wallet(p).name = name;
     this.send(p, {
@@ -332,6 +333,11 @@ export class GameWorld {
       const near = [], nm = [];
       for (const q of players) { if (q === p) continue; const dx = q.x - p.x, dz = q.z - p.z; if (dx * dx + dz * dz <= RP2) near.push(q); }
       for (const m of mobs) { const dx = m.x - p.x, dz = m.z - p.z; if (dx * dx + dz * dz <= RM2) nm.push(m); }
+      if (p.compact) { // opted-in clients get the 13-byte/entity fixed-point frame
+        const buf = encodeState(p.x, p.z, near.map(q => ({ id: q.id, x: q.x, y: q.y, z: q.z, yaw: ang(q.yaw), pitch: Math.max(-3000, Math.min(3000, Math.round(q.pitch * 1000))), st: q.st | 0 })),
+          nm.map(m => ({ id: m.id, type: MOB_TYPES.indexOf(m.type), x: m.x, y: m.y, z: m.z, yaw: ang(m.yaw), hp: Math.max(0, Math.min(100, Math.round(m.hp / MOB[m.type].hp * 100))), flags: (m.hurt > 0 ? 1 : 0) | (m.atk > .6 ? 2 : 0) })));
+        this.netOut += buf.length; p.ws.send(buf, { binary: true }); continue;
+      }
       const buf = Buffer.allocUnsafe(5 + (near.length + nm.length) * 19); let o = 0;
       buf[o++] = 3; buf.writeUInt16LE(near.length, o); o += 2;
       for (const q of near) { buf.writeUInt16LE(q.id, o); buf.writeFloatLE(q.x, o + 2); buf.writeFloatLE(q.y, o + 6); buf.writeFloatLE(q.z, o + 10); buf.writeInt16LE(ang(q.yaw), o + 14); buf.writeInt16LE(Math.max(-3000, Math.min(3000, Math.round(q.pitch * 1000))), o + 16); buf[o + 18] = q.st | 0; o += 19; }

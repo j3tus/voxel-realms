@@ -18,6 +18,7 @@ import { newEconomy, sellPrice, buyPrice, sell as ecoSell, buy as ecoBuy, quoteB
 import { moveBody } from '../shared/physics.js';
 import { newCareer, progress as careerProgress, rankOf, current as careerCurrent } from '../shared/career.js';
 import { createArena } from './arena.js';
+import { decodeState } from '../shared/netframe.js';
 import { createLobby } from './lobby.js';
 import { Particles } from './particles.js';
 import './style.css';
@@ -31,7 +32,7 @@ const WORLDS_KEY='voxel_worlds', CUR_KEY='voxel_cur', LEGACY_KEY='voxel_realms_v
 let worldIndex=[]; try{ worldIndex=JSON.parse(localStorage.getItem(WORLDS_KEY))||[]; }catch(e){}
 const saveIndex=()=>{ try{ localStorage.setItem(WORLDS_KEY,JSON.stringify(worldIndex)); }catch(e){} };
 const newWorldId=()=>'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-let save = null, legacyEdits=false;
+let save = null;
 // one-time migration of the old single-slot save into world slot "w1"
 if(!worldIndex.length){
   let old=null; try{ old=await idbGet(LEGACY_KEY); }catch(e){} if(!old){ try{ old=JSON.parse(localStorage.getItem(LEGACY_KEY)); }catch(e){} }
@@ -77,7 +78,6 @@ function writeSave(){
     for(const k of dirtyChunks) idbSet(EDIT_PREFIX+k,edits[k]).catch(()=>{}); dirtyChunks.clear();
   } catch(e){}
 }
-const lastCfgTouch = 0; // (reserved)
 
 
 const atlas = makeAtlas();
@@ -259,7 +259,6 @@ outline.visible=false; scene.add(outline);
 
 /* ============================ particles ============================ */
 const fx=new Particles(scene);
-function addParticle(x,y,z,col){ fx.debris(x,y,z,col,1); }
 function updateParticles(dt){ fx.update(dt,innerHeight*renderer.getPixelRatio(),camera.fov); }
 function burst(x,y,z,id){ fx.debris(x+.5,y+.5,z+.5,BLOCK_COLOR[id],14); fx.dust(x+.5,y+.2,z+.5,5,BLOCK_COLOR[id]); }
 let landFx=0, wasInWater=false;
@@ -320,7 +319,7 @@ function setWeather(type,snap){
 const thunder=()=>audio.thunder();
 
 /* ---- audio environment: what the engine needs to know (throttled to 5 Hz) ---- */
-let audT=0, audCave=0, audWater=0;
+let audT=0;
 function feedAudio(dt){
   audT-=dt; if(audT>0) return; audT=.2;
   if(!P.ready||!started){ audio.update({started:false,k:0,under:false,water:0,cave:0,night:0,day:1,alt:0,speed:0,lobby:false,combat:false,quiet:false}); return; }
@@ -349,7 +348,7 @@ let mmTerr=0, mmLastZoom=0;
 function drawMinimap(dt){
   mmT-=dt; if(mmT>0) return; mmT=.1; mmTerr-=.1;
   mmCv.style.display=cfg.minimap&&started&&!document.body.classList.contains('nohud')?'block':'none'; if(mmCv.style.display==='none') return;
-  const half=MM/2/mmZoom*.5, px=Math.floor(P.x), pz=Math.floor(P.z), d=mmImg.data; // 1 pixel = 1/mmZoom*... blocks
+  const d=mmImg.data; // 1 pixel = 1/mmZoom*... blocks
   const scale=2/mmZoom; // blocks per pixel
   let lcx=1e9, lcz=1e9, lc=null, lt=null;
   if(mmTerr<=0||mmLastZoom!==mmZoom){ mmTerr=.5; mmLastZoom=mmZoom; // terrain scan is the costly part; arrow and dots below refresh 5x faster
@@ -901,7 +900,7 @@ function animateRig(g,speed,dt,t){
   const r=g.rig, amp=Math.min(1,speed/3.2); g.phase+=speed*dt*2.6;
   const sw=Math.sin(g.phase)*.95*amp, idle=Math.sin(t*1.7)*.035;
   r.legL.rotation.x+=((sw)-r.legL.rotation.x)*Math.min(1,dt*18); r.legR.rotation.x+=((-sw)-r.legR.rotation.x)*Math.min(1,dt*18);
-  const st=g.state|0, tl=1-Math.min(1,dt*10);
+  const st=g.state|0;
   if(g.armsUp){ r.armL.rotation.x=r.armR.rotation.x=-1.45+Math.sin(g.phase)*.1*amp+idle; r.armL.rotation.z=.08; r.armR.rotation.z=-.08; }
   else if(st===1||st===4){ r.armL.rotation.x=-.4; r.armR.rotation.x=-.4; r.armL.rotation.z=.9; r.armR.rotation.z=-.9; r.legL.rotation.x=-.45; r.legR.rotation.x=.35; }
   else if(st===2){ const sp2=Math.sin(t*5+g.phase); r.armL.rotation.x=-2.2+sp2*.9; r.armR.rotation.x=-2.2-sp2*.9; r.armL.rotation.z=.35; r.armR.rotation.z=-.35; r.legL.rotation.x=sp2*.6; r.legR.rotation.x=-sp2*.6; }
@@ -918,14 +917,14 @@ function animatePig(g,speed,dt,t){
 }
 
 /* ============================ multiplayer ============================ */
-let ws=null, myId=null, mp=false, mpAddr=null, mpWorld=null, mpMotd=''; const others=new Map();
+let ws=null, myId=null, mp=false, mpAddr=null, mpWorld=null; const others=new Map();
 let netMobTargets=[]; const timeSync={t:0,len:420,at:0};
 function addOther(p){ if(p.id===myId||others.has(p.id)) return; const mesh=makeAvatar(p.name||'Player',p.id,p.skin); scene.add(mesh); mesh.position.set(p.x||0,p.y||0,p.z||0); others.set(p.id,{seen:performance.now(),name:p.name||'Player',mesh,x:p.x||0,y:p.y||0,z:p.z||0,yaw:0,pitch:0}); }
 function removeOther(id){ const o=others.get(id); if(o){ scene.remove(o.mesh); disposeObj(o.mesh); others.delete(id); } }
 function handleNet(m){
   switch(m.t){
     case 'init': {
-      mp=true; myId=m.id; mpMotd=m.motd||''; mpEconomy=!!m.economy; kickReason='';
+      mp=true; myId=m.id; mpEconomy=!!m.economy; kickReason='';
       const byChunk={}; for(const [x,y,z,id] of m.edits) (byChunk[ck(x>>4,z>>4)] ??= {})[(x&15)+16*((z&15)+16*y)]=id;
       clearMobViews(); lobbyVis.clear(); for(const id of [...others.keys()]) removeOther(id);
       resetWorld(m.seed,m.gen||{type:'normal'},byChunk);
@@ -963,8 +962,13 @@ function handleNet(m){
   }
 }
 /** Binary state frame from the server: [3][u16 n]{u16 id,f32 x,y,z,i16 yaw,i16 pitch,u8 st} [u16 n]{u16 id,u8 type,f32 x,y,z,i16 yaw,u8 hp,u8 flags} */
+function handleCompact(dv){
+  const now=performance.now(), s=decodeState(dv);
+  for(const e of s.players){ const ob=others.get(e.id); if(!ob) continue; ob.x=e.x; ob.y=e.y; ob.z=e.z; ob.yaw=e.yaw; ob.pitch=e.pitch; ob.st=e.st; ob.seen=now; }
+  netMobTargets=s.mobs.map(m=>({id:m.id,type:MOB_TYPES[m.type],x:m.x,y:m.y,z:m.z,yaw:m.yaw,hurt:!!(m.flags&1),atk:!!(m.flags&2)}));
+}
 function handleBinary(buf){
-  const dv=new DataView(buf); if(dv.getUint8(0)!==3) return; let o=1; const now=performance.now(), np=dv.getUint16(o,true); o+=2;
+  const dv=new DataView(buf); if(dv.getUint8(0)===4){ handleCompact(dv); return; } if(dv.getUint8(0)!==3) return; let o=1; const now=performance.now(), np=dv.getUint16(o,true); o+=2;
   for(let i=0;i<np;i++,o+=19){ const ob=others.get(dv.getUint16(o,true)); if(!ob) continue; ob.x=dv.getFloat32(o+2,true); ob.y=dv.getFloat32(o+6,true); ob.z=dv.getFloat32(o+10,true); ob.yaw=dv.getInt16(o+14,true)/1000; ob.pitch=dv.getInt16(o+16,true)/1000; ob.st=dv.getUint8(o+18); ob.seen=now; }
   const nm=dv.getUint16(o,true); o+=2; const list=new Array(nm);
   for(let i=0;i<nm;i++,o+=19){ const fl=dv.getUint8(o+18); list[i]={id:dv.getUint16(o,true),type:MOB_TYPES[dv.getUint8(o+2)],x:dv.getFloat32(o+3,true),y:dv.getFloat32(o+7,true),z:dv.getFloat32(o+11,true),yaw:dv.getInt16(o+15,true)/1000,hurt:!!(fl&1),atk:!!(fl&2)}; }
@@ -1008,7 +1012,7 @@ function connectServer(url,name){
     let done=false, sock; try{ sock=new WebSocket(url); }catch(e){ return res(false); }
     const fin=v=>{ if(done) return; done=true; clearTimeout(to); if(!v){ try{sock.close();}catch(e){} } res(v); };
     const to=setTimeout(()=>fin(false),5000);
-    sock.onopen=()=>sock.send(JSON.stringify({t:'hello',name,skin:activeProfile().skin,uid:UID,password:pendingPassword||undefined,v:2}));
+    sock.onopen=()=>sock.send(JSON.stringify({t:'hello',name,skin:activeProfile().skin,uid:UID,password:pendingPassword||undefined,v:2,q:1}));
     sock.binaryType='arraybuffer';
     sock.onmessage=ev=>{ netInB+=(typeof ev.data==='string'?ev.data.length:ev.data.byteLength||0); const nt=performance.now(); if(nt-netInT>1000){ netInRate=netInB*1000/(nt-netInT); netInB=0; netInT=nt; } if(typeof ev.data!=='string'){ handleBinary(ev.data); return; } let m; try{ m=JSON.parse(ev.data); }catch(e){ return; } if(m.t==='init'){ ws=sock; } handleNet(m); if(m.t==='init') fin(true); };
     sock.onerror=()=>fin(false);
@@ -1207,7 +1211,7 @@ function paintWorldPreview(cv,seed,type){
     else { const t=Math.min(1,(h-SEA)/26); r=78+t*30; gg=152-t*34; b=52+t*14; }
     img.data[o]=r; img.data[o+1]=gg; img.data[o+2]=b; img.data[o+3]=255;
   }
-  const sp=w.findSpawn(); g.putImageData(img,0,0); previewCache.set(key,g.getImageData(0,0,N,N));
+  g.putImageData(img,0,0); previewCache.set(key,g.getImageData(0,0,N,N));
 }
 const ago=t=>{ const m=(Date.now()-t)/60000|0; return m<1?'just now':m<60?m+' min ago':m<1440?(m/60|0)+' h ago':(m/1440|0)+' days ago'; };
 function refreshSingle(){ renderWorldList(); }
@@ -1321,7 +1325,6 @@ const savedList=()=>{ try{ return JSON.parse(localStorage.getItem(SRV_KEY))||[];
 const setSaved=l=>{ try{ localStorage.setItem(SRV_KEY,JSON.stringify(l)); }catch(e){} };
 const normAddr=a=>a.trim().replace(/^(https?|wss?):\/\//,'').replace(/\/+$/,'');
 function rememberServer(a){ a=normAddr(a); if(!a) return; const l=savedList(); if(!l.includes(a)&&a!==location.host) setSaved([...l,a]); }
-const isLocalPage=()=>location.protocol==='file:'||/^(localhost|127\.|\[)/.test(location.hostname);
 function buildEntries(){
   const add=(addr,tag,saved)=>{ const e=entries.get(addr); if(e){ if(saved) e.saved=true; return; } entries.set(addr,{addr,tag,state:'wait',info:null,saved:!!saved}); };
   if(location.protocol.startsWith('http')&&location.port!=='5173') add(location.host,'This site');
@@ -1765,4 +1768,4 @@ requestAnimationFrame(loop);
 { let aj=null; try{ aj=JSON.parse(sessionStorage.getItem('voxel_autojoin')||'null'); sessionStorage.removeItem('voxel_autojoin'); }catch(e){}
   if(aj&&aj.addr&&aj.world){ needClick=!IS_TOUCH; let tries=0; const iv=setInterval(()=>{ if(++tries>200){ clearInterval(iv); return; } if(P.ready&&!started){ clearInterval(iv); launch(aj.addr,aj.world,aj.pw||undefined); } },300); } }
 // test hook (only with ?e2e=1; production CSP forbids eval anyway)
-if(new URLSearchParams(location.search).has('e2e')) window.__eval=src=>eval(src);
+if(import.meta.env.VITE_E2E&&new URLSearchParams(location.search).has('e2e')) window.__eval=src=>eval(src); // test hook: only compiled in by `VITE_E2E=1 npm run build`

@@ -1,6 +1,6 @@
 // Admin on its own port. Start:  ADMIN_PASSWORD=testtoken123 ADMIN_PORT=8185 PORT=8186 DATA_DIR=$(mktemp -d) npm start    then  node test/soak/admin-port.cjs 8186 8185
 const WS=require('ws'); const os=require('os'); const GP=process.argv[2]||'8186', AP=process.argv[3]||'8185'; const G='http://127.0.0.1:'+GP, A='http://127.0.0.1:'+AP, H={Authorization:'Bearer testtoken123'};
-const sleep=ms=>new Promise(r=>setTimeout(r,ms)); let fails=0; const ok=(n,c,x='')=>{ console.log(c?'PASS':'FAIL',n,x); if(!c) fails++; };
+let fails=0; const ok=(n,c,x='')=>{ console.log(c?'PASS':'FAIL',n,x); if(!c) fails++; };
 const st=async(u,h)=>{ try{ const r=await fetch(u,{headers:h||{}}); return r.status; }catch(e){ return 'ERR '+(e.cause&&e.cause.code||e.message); } };
 const wsTry=(url,msg)=>new Promise(res=>{ const ws=new WS(url); const r={open:false,msgs:[],err:null,closed:null}; ws.on('open',()=>{ r.open=true; if(msg) ws.send(JSON.stringify(msg)); }); ws.on('message',d=>{ try{ r.msgs.push(JSON.parse(d).t); }catch{} }); ws.on('unexpected-response',(q,s)=>{ r.err=s.statusCode; }); ws.on('error',e=>{ r.err=r.err||e.message; }); ws.on('close',c=>{ r.closed=c; }); setTimeout(()=>{ try{ws.close();}catch{} res(r); },1800); });
 (async()=>{

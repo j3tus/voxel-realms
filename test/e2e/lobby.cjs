@@ -1,4 +1,5 @@
 // E2E: join the lobby hub, see portals, walk into one -> transferred into that world (page reload + auto-join), then /lobby brings you back.
+//   VITE_E2E=1 npm run build   first (compiles in the test hook), then
 //   VR_E2E=1 ADMIN_PASSWORD=testtoken123 PORT=8090 npm start   then   node test/e2e/lobby.cjs [baseUrl] [screenshot.png]
 const {chromium}=require('playwright'); const URL=process.argv[2]||'http://localhost:8090/', SHOT=process.argv[3]||''; let fails=0; const ok=(n,c,x='')=>{console.log(c?'PASS':'FAIL',n,x); if(!c)fails++;};
 const ev=(p,fn,arg)=>p.evaluate(([src,a])=>window.__eval('('+src+')')(a),[fn.toString(),arg]);

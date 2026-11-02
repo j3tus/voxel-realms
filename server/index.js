@@ -75,7 +75,7 @@ const capLag = monitorEventLoopDelay({ resolution: 10 }); capLag.enable(); setIn
 /** server capacity, recomputed at most once a second (tick time, event-loop lag, memory, CPU -> slots free) */
 let capAt = 0, capV = null;
 function capacity() { const n = Date.now(); if (!capV || n - capAt > 1000) { capAt = n; const ws = [...worlds.values()]; capV = computeCapacity(readMetrics({ worlds: ws, lagP99: Math.max(0, capLag.percentile(99) / 1e6 - 10), rates }), ws.map(roomLoad)); } return capV; }
-const capacityJson = () => { const { canOpen, ...c } = capacity(); return c; };
+const capacityJson = () => { const c = { ...capacity() }; delete c.canOpen; return c; };
 /** Fold the journal into the compact snapshot (also done on backup/shutdown) so startup replay stays short. */
 function compact(w) { if (!w.journal) return; w.journal.flush(); saveEditsSnapshot(w.meta.id, w.ce); w.journal.truncate(); }
 /** Cheap periodic save: only the small meta file + journal flush. Full snapshots happen on compaction/backup. */

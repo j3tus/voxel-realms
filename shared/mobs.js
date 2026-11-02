@@ -2,7 +2,7 @@
 // The sim only needs a `world` with getB(x,y,z) and hasChunk(cx,cz).
 import { CH, SEA, B } from './blocks.js';
 import { moveBody } from './physics.js';
-const { WATER, LEAVES } = B;
+const { LEAVES } = B;
 import { isWater } from './fluid.js';
 
 export const MOB = {

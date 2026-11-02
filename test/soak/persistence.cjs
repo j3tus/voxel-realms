@@ -1,5 +1,5 @@
 // Restart persistence test. Spawns its own server (port 8111):  node test/soak/persistence.cjs $(mktemp -d)   (run from the repo root)
-const WS=require('ws'); const {spawn,execSync}=require('child_process'); const fs=require('fs');
+const WS=require('ws'); const {spawn}=require('child_process'); const fs=require('fs');
 const D=process.argv[2], PORT=8111, U='http://127.0.0.1:'+PORT; const H={Authorization:'Bearer testtoken123','Content-Type':'application/json'};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms)); let fails=0; const ok=(n,c,x='')=>{ console.log(c?'PASS':'FAIL',n,x); if(!c) fails++; };
 const api=async(m,p,b)=>{ const r=await fetch(U+'/api/admin'+p,{method:m,headers:b?H:{Authorization:H.Authorization},body:b?JSON.stringify(b):undefined}); return r.json().catch(()=>({})); };

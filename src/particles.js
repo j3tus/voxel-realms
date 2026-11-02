@@ -78,13 +78,13 @@ export class Particles {
   update(dt, viewportH, fov) {
     const scale = viewportH / (2 * Math.tan(fov * Math.PI / 360));
     this.soft.update(dt, scale); this.glow.update(dt, scale);
-    let live = 0; const d = this.dummy;
+    const d = this.dummy;
     for (let i = 0; i < this.n; i++) {
       if (this.l[i] <= 0) continue; this.l[i] -= dt; const o = i * 3;
       if (this.l[i] <= 0) { d.scale.setScalar(0); d.position.set(0, -999, 0); d.updateMatrix(); this.mesh.setMatrixAt(i, d.matrix); continue; }
       this.v[o + 1] -= 18 * dt; this.p[o] += this.v[o] * dt; this.p[o + 1] += this.v[o + 1] * dt; this.p[o + 2] += this.v[o + 2] * dt;
       d.position.set(this.p[o], this.p[o + 1], this.p[o + 2]); d.rotation.set(this.r[o] * (this.ml[i] - this.l[i]), this.r[o + 1] * (this.ml[i] - this.l[i]), 0);
-      d.scale.setScalar(this.sc[i] * Math.min(1, this.l[i] * 3)); d.updateMatrix(); this.mesh.setMatrixAt(i, d.matrix); live++;
+      d.scale.setScalar(this.sc[i] * Math.min(1, this.l[i] * 3)); d.updateMatrix(); this.mesh.setMatrixAt(i, d.matrix);
     }
     while (this.n > 0 && this.l[this.n - 1] <= 0) this.n--;
     this.mesh.count = this.n; this.mesh.instanceMatrix.needsUpdate = true;

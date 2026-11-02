@@ -4,7 +4,7 @@ import { z } from 'zod';
 const int = z.number().int();
 export const HelloMsg = z.object({
   t: z.literal('hello'), name: z.string().max(40).optional(), uid: z.string().max(64).optional(), password: z.string().max(100).optional(),
-  v: z.number().optional(), skin: z.object({ shirt: z.string().max(9).nullish(), pants: z.string().max(9).nullish(), skin: z.string().max(9).nullish(), hair: z.string().max(9).nullish() }).partial().nullish(),
+  v: z.number().optional(), q: z.number().optional(), skin: z.object({ shirt: z.string().max(9).nullish(), pants: z.string().max(9).nullish(), skin: z.string().max(9).nullish(), hair: z.string().max(9).nullish() }).partial().nullish(),
 });
 const Pos = z.object({ t: z.literal('pos'), x: z.number(), y: z.number(), z: z.number(), yaw: z.number().optional(), pitch: z.number().optional(), st: z.number().optional() });
 export const GameMsg = z.discriminatedUnion('t', [

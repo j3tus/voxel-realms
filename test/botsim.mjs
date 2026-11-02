@@ -18,7 +18,7 @@ const wrap = () => { const m = mg(); if (!m || m.__w) return; m.__w = 1;
   m.shoot = (p, msg) => { if (p.bot) { const a = p.mg.ammo[msg.w]; sh(p, msg); if (p.mg.ammo[msg.w] < a) { S.shots++; S.pellets += WEAPONS[msg.w].pellets; } } else sh(p, msg); };
   m.damage = (q, n, by, ...r) => { if (by?.bot) S.hits++; return dm(q, n, by, ...r); };
   m.kill = (...a) => { S.kills++; return kl(...a); }; };
-const pos = new Map(); let idle = 0, samples = 0, dist = 0, still = 0, longestStill = 0; const stillT = new Map();
+const pos = new Map(); let idle = 0, samples = 0, dist = 0, longestStill = 0; const stillT = new Map();
 const sample = () => { for (const p of w.players.values()) { if (!p.bot || !p.mg?.alive || mg()?.state !== 'play') continue; const q = pos.get(p.id); if (q) { const d = Math.hypot(p.x - q[0], p.z - q[1]); dist += d; samples++; if (d < 0.02) { idle++; const t = (stillT.get(p.id) || 0) + 1; stillT.set(p.id, t); if (t > longestStill) longestStill = t; } else stillT.set(p.id, 0); } pos.set(p.id, [p.x, p.z]); } };
 const t0 = performance.now(); const ticks = +secs * 20;
 for (let i = 0; i < ticks; i++) { now += 50; w.tick(); wrap(); sample(); }
