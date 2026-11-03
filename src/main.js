@@ -1100,7 +1100,7 @@ let modalOpen=false;
 const lobbyVis=createLobby({THREE,scene});
 /** Walk into a lobby portal (or /lobby): remember where to go, then reload for a clean slate and auto-join there. */
 function travel(m){ try{ sessionStorage.setItem('voxel_autojoin',JSON.stringify({addr:mpAddr,world:m.world,pw:pendingPassword||''})); }catch(e){} showToast('Entering '+(m.name||m.world)+'...'); intentionalClose=true; saveDirty=true; try{ writeSave(); }catch(e){} setTimeout(()=>location.reload(),250); }
-const arena=createArena({THREE,scene,camera,P,canvas,mode:()=>MODE,myId:()=>myId,send:o=>{ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); },sfx:(...a)=>sfx(...a),inGame:()=>started&&mp,canPlay:()=>started&&locked()&&!chatOpen&&!modalOpen,flashHurt:()=>{ const h=document.getElementById('hurt'); h.style.opacity=1; setTimeout(()=>h.style.opacity=0,120); }});
+const arena=createArena({THREE,scene,camera,P,canvas,ping:()=>pingMs,mode:()=>MODE,myId:()=>myId,send:o=>{ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); },sfx:(...a)=>sfx(...a),inGame:()=>started&&mp,canPlay:()=>started&&locked()&&!chatOpen&&!modalOpen,flashHurt:()=>{ const h=document.getElementById('hurt'); h.style.opacity=1; setTimeout(()=>h.style.opacity=0,120); }});
 window.__arena=arena; const inArena=()=>mp&&arena.active();
 /** gun-only modes (everything FPS except Bed Wars / Tower Defence): no block outline, held block, hotbar, mining or block raycast. Derived from the mode every frame so it is right from the very first frame. */
 function fpsOnly(){ return inArena()&&arena.pvp()&&!arena.builds(); }

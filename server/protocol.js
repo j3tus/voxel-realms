@@ -17,7 +17,7 @@ export const GameMsg = z.discriminatedUnion('t', [
   z.object({ t: z.literal('bounty'), uid: z.string().max(16) }),
   z.object({ t: z.literal('craft'), r: int.min(0).max(64) }),
   z.object({ t: z.literal('respawn') }),
-  z.object({ t: z.literal('shoot'), w: int.min(0).max(7), dx: z.number().finite(), dy: z.number().finite(), dz: z.number().finite() }),
+  z.object({ t: z.literal('shoot'), w: int.min(0).max(7), dx: z.number().finite(), dy: z.number().finite(), dz: z.number().finite(), lat: z.number().finite().optional() }),
   z.object({ t: z.literal('reload'), w: int.min(0).max(7) }),
 ]);
 export function parseGame(raw) {

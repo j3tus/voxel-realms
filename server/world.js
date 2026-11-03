@@ -295,6 +295,7 @@ export class GameWorld {
     if (this.idle) return this.idleTick();
     if (!this.humans() && !this.players.size && this.ticks % 20 === 0) this.mg?.tick(TICK); // awake only for summoned bots that are gone: let the match reset
     const t0 = performance.now(); this.ticks++;
+    { const now = Date.now(); for (const q of this.players.values()) { const h = q.hist ||= [], l = h[h.length - 1]; if (l && Math.abs(q.x - l[1]) + Math.abs(q.y - l[2]) + Math.abs(q.z - l[3]) > 6) h.length = 0; h.push([now, q.x, q.y, q.z]); if (h.length > 24) h.shift(); } } // ~1.2 s of positions for lag-compensated hit checks
     this.time = (this.time + TICK / this.meta.dayLength) % 1;
     this.weather.timer -= TICK; if (this.weather.timer <= 0) { const r = Math.random(); this.setWeather(r < .6 ? 'clear' : r < .9 ? 'rain' : 'storm'); }
     tickEconomy(this.eco, TICK); if (this.ticks % 1200 === 0) for (const id in this.eco.mult) { const h = (this.priceHist[id] ||= []); h.push(+this.eco.mult[id].toFixed(3)); if (h.length > 60) h.shift(); }

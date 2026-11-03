@@ -99,7 +99,7 @@ export function createArena(ctx) {
     if (!pvp() || !st.alive || !st.mg || st.mg.state !== 'play' || now < st.reloadUntil || now - st.lastShot < wp.rate * 1000) return;
     if (st.ammo[st.w] <= 0) { ctx.send({ t: 'reload', w: st.w }); return; }
     st.lastShot = now; st.ammo[st.w]--; const d = new THREE.Vector3(); camera.getWorldDirection(d);
-    ctx.send({ t: 'shoot', w: st.w, dx: d.x, dy: d.y, dz: d.z });
+    ctx.send({ t: 'shoot', w: st.w, dx: d.x, dy: d.y, dz: d.z, lat: ctx.ping ? ctx.ping() : 0 });
     gun.position.z = -.4; flashMat.opacity = 1; st.kick += wp.recoil || 0; ctx.P.pitch = Math.min(1.55, ctx.P.pitch + (wp.recoil || 0)); ctx.P.yaw += (Math.random() - .5) * (wp.recoil || 0) * .5; ctx.sfx(wp.id === 'sniper' ? 70 : wp.id === 'shotgun' ? 90 : 220, .08, 'square', .08);
   }
   const nextWeapon = () => setWeapon((st.w + 1) % WEAPONS.length);

@@ -21,7 +21,16 @@ const TDM_KILLS = 30;
 const TEAMS = ['RED', 'BLUE'];
 const PVP_KILLS = 15, PVP_TIME = 240, SPLEEF_TIME = 180, LOBBY = 8, END = 7, RESPAWN = 3;
 
-const HIT_HW = .42; // slightly wider than the 0.6 body: forgives client/server latency on moving targets
+const HIT_HW = .36; // a little wider than the 0.6 body for aiming slack; latency itself is handled by rewinding (below)
+const MAX_REWIND = 300;
+/** Where `q` was `ms` ago (interpolated from its per-tick history); falls back to its current position. */
+export function posAt(q, ms, now = Date.now()) {
+  const h = q.hist; if (!h || h.length < 2 || ms <= 0) return q;
+  const last = h[h.length - 1]; if (Math.abs(q.x - last[1]) + Math.abs(q.z - last[3]) + Math.abs(q.y - last[2]) > 3) return q; // teleported (respawn / round start): history is meaningless
+  const T = now - ms; if (T >= last[0]) return q; if (T <= h[0][0]) return { x: h[0][1], y: h[0][2], z: h[0][3] };
+  for (let i = h.length - 1; i > 0; i--) if (h[i - 1][0] <= T) { const a = h[i - 1], b = h[i], f = (T - a[0]) / Math.max(1, b[0] - a[0]); return { x: a[1] + (b[1] - a[1]) * f, y: a[2] + (b[2] - a[2]) * f, z: a[3] + (b[3] - a[3]) * f }; }
+  return q;
+}
 export class Minigame {
   constructor(world) {
     this.w = world; this.kind = world.meta.mode; this.fps = FPS_MODES.includes(this.kind); this.winTeam = -1; this.state = 'lobby'; this.t = LOBBY; this.winner = ''; this.built = false; this.round = 0;
@@ -117,6 +126,8 @@ export class Minigame {
     if (now < g.reloadAt || now - g.lastShot < wp.rate * 1000 * .9 || g.ammo[wi] <= 0) return;
     const d = [m.dx, m.dy, m.dz]; if (!d.every(Number.isFinite)) return; const l = Math.hypot(...d); if (l < .5 || l > 1.5) return;
     g.lastShot = now; g.ammo[wi]--;
+    // lag compensation: the shooter saw targets ~(half their ping + interpolation delay) in the past; bots aim at live positions
+    const rewind = p.bot ? 0 : Math.min(MAX_REWIND, Math.max(0, (Number.isFinite(m.lat) ? Math.min(400, m.lat) : 0) / 2 + 100));
     const ox = p.x, oy = p.y + 1.62, oz = p.z, tracers = [];
     for (let i = 0; i < wp.pellets; i++) {
       const dx = d[0] / l + (Math.random() - .5) * wp.spread * 2, dy = d[1] / l + (Math.random() - .5) * wp.spread * 2, dz = d[2] / l + (Math.random() - .5) * wp.spread * 2, n = Math.hypot(dx, dy, dz);
@@ -124,8 +135,8 @@ export class Minigame {
       let best = rayBlocks(this.w.getB.bind(this.w), ox, oy, oz, ux, uy, uz, wp.range), hit = null, head = false, mobHit = null;
       for (const q of this.list()) {
         if (q === p || !q.mg.alive || !this.canHit(p, q)) continue;
-        const t = rayBox(ox, oy, oz, ux, uy, uz, q.x - HIT_HW, q.y - .05, q.z - HIT_HW, q.x + HIT_HW, q.y + 1.85, q.z + HIT_HW);
-        if (t >= 0 && t < best) { best = t; hit = q; head = oy + uy * t > q.y + 1.4; }
+        const qp = posAt(q, rewind, now), t = rayBox(ox, oy, oz, ux, uy, uz, qp.x - HIT_HW, qp.y - .05, qp.z - HIT_HW, qp.x + HIT_HW, qp.y + 1.85, qp.z + HIT_HW);
+        if (t >= 0 && t < best) { best = t; hit = q; head = oy + uy * t > qp.y + 1.4; }
       }
       for (const mb of this.w.sim.mobs.values()) {
         const md = MOB[mb.type] || MOB.zombie, hw = Math.max(.35, md.w / 2), t = rayBox(ox, oy, oz, ux, uy, uz, mb.x - hw, mb.y, mb.z - hw, mb.x + hw, mb.y + Math.max(1.2, md.h), mb.z + hw);
