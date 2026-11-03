@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'src/main.orig.js', 'test/e2e/**', 'server/admin-ui/**', '.shrink2.cjs', 'v_*.png'] },
+  { ignores: ['dist/**', 'node_modules/**', 'src/main.orig.js', 'test/e2e/**', 'server/admin-ui/**', 'admin-ui/.output/**', 'admin-ui/.nuxt/**', '.shrink2.cjs', 'v_*.png'] },
   js.configs.recommended,
   { files: ['src/**/*.js'], languageOptions: { globals: { ...globals.browser } } },
   { files: ['server/**/*.js', 'shared/**/*.js', 'test/**/*.{js,mjs}', 'deploy/**/*.mjs', 'vite.config.js', 'eslint.config.js'], languageOptions: { globals: { ...globals.node } } },

@@ -1,0 +1,1 @@
+window.__NUXT__={};window.__NUXT__.config={public:{},app:{baseURL:"/admin/",buildId:"38bee97e-2628-46b8-99e9-8ea18791a00e",buildAssetsDir:"/_nuxt/",cdnURL:""}}

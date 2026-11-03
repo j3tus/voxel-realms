@@ -289,7 +289,7 @@ app.post('/api/admin/hub', admin, async (req) => {
 app.get('/api/admin/capacity', admin, async () => capacityJson());
 app.get('/api/admin/bots', admin, async () => ({ ...config.bots, capDensity: capacity().botDensity, total: [...worlds.values()].reduce((a, w) => a + w.botCount(), 0) }));
 app.patch('/api/admin/bots', admin, async (req) => {
-  const b = z.object({ enabled: z.boolean().optional(), skill: z.enum(['easy', 'normal', 'hard']).optional(), density: z.number().min(0).max(3).optional(), tuning: z.record(z.enum(['easy', 'normal', 'hard']), z.record(z.string(), z.number()).transform(sanitizeTuning)).optional() }).parse(req.body || {});
+  const b = z.object({ enabled: z.boolean().optional(), skill: z.enum(['easy', 'normal', 'hard']).optional(), density: z.number().min(0).max(3).optional(), tuning: z.partialRecord(z.enum(['easy', 'normal', 'hard']), z.record(z.string(), z.number()).transform(sanitizeTuning)).optional() }).parse(req.body || {});
   Object.assign(config.bots, b); saveConfig(config); log('info', 'bot settings updated: ' + JSON.stringify(b)); if (b.enabled === false) for (const w of worlds.values()) w.bots?.clear(); return config.bots;
 });
 const botWorld = (req, reply) => { const w = worlds.get(safeId(req.params.id)); if (!w) { reply.code(404).send({ error: 'No such world' }); return null; } if (!BOT_MODES.includes(w.meta.mode)) { reply.code(400).send({ error: 'Bots do not play this mode' }); return null; } return w; };

@@ -13,6 +13,21 @@ const summon = w => act(async () => {
 })()
 const remove = (w, n = 1) => act(async () => { const r = await api('POST', `/worlds/${w.id}/bots/remove`, { n }); toast(`Removed ${r.removed}`) })()
 const clear = w => act(async () => { if (!(await confirmBox('Remove every bot?', `All bots in ${w.name}, including summoned ones.`, true, 'Remove all'))) return; const r = await api('POST', `/worlds/${w.id}/bots/clear`); toast(`Removed ${r.removed}`) })()
+// ---- custom tuning: per-skill overrides of the bot brain (server clamps every value to its range) ----
+const TUNE = [
+  { k: 'react', label: 'Reaction time', unit: 's', min: 0, max: 2, step: 0.05, hint: 'delay before firing at a newly spotted target' },
+  { k: 'err', label: 'Aim error', unit: '', min: 0, max: 0.3, step: 0.005, hint: 'spread of each shot; lower is more accurate' },
+  { k: 'rof', label: 'Fire interval ×', unit: '×', min: 1, max: 4, step: 0.05, hint: '1 = the weapon\'s full fire rate, higher is slower' },
+  { k: 'fire', label: 'Trigger chance', unit: '', min: 0, max: 1, step: 0.05, hint: 'chance to shoot when ready' },
+  { k: 'think', label: 'Re-plan every', unit: 's', min: 0.03, max: 2, step: 0.01, hint: 'how often a bot picks a new target' },
+  { k: 'speed', label: 'Move speed ×', unit: '×', min: 0.3, max: 1.6, step: 0.05, hint: 'multiplier on walking speed' },
+]
+const PRESET = { easy: { err: 0.075, think: 0.5, fire: 0.6, speed: 0.8, react: 0.6, rof: 1.8 }, normal: { err: 0.035, think: 0.22, fire: 0.95, speed: 0.95, react: 0.28, rof: 1.2 }, hard: { err: 0.015, think: 0.12, fire: 1, speed: 1.05, react: 0.18, rof: 1.08 } }
+const tier = ref('normal')
+const tval = k => g.value.tuning?.[tier.value]?.[k] ?? PRESET[tier.value][k]
+const tuned = k => g.value.tuning?.[tier.value]?.[k] !== undefined
+const setTune = (k, v) => saveG({ tuning: { ...(g.value.tuning || {}), [tier.value]: { ...(g.value.tuning?.[tier.value] || {}), [k]: +v } } })
+const resetTune = () => { const t = { ...(g.value.tuning || {}) }; delete t[tier.value]; return saveG({ tuning: t }) }
 const totalNow = computed(() => s.status ? s.status.bots : 0)
 </script>
 <template>
@@ -25,6 +40,14 @@ const totalNow = computed(() => s.status ? s.status.bots : 0)
         <div class="field"><label>Fill density ×{{ g.density }} <span class="dim">(how full automatic games are kept)</span></label><input type="range" min="0" max="3" step="0.25" :value="g.density" @change="e => saveG({ density: +e.target.value })" style="width:100%;accent-color:#6ee7a8"></div></div>
       <div class="card"><div class="card-h"><h3>Server headroom</h3><span class="sub">bots are the first thing to shrink</span></div><CapacityBar />
         <p class="mut sm" style="margin:12px 0 0">When the server gets busy, automatic bot fill is scaled by <b style="color:var(--txt)">×{{ g.capDensity }}</b> so real players always have priority.</p></div>
+    </div>
+    <div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Bot tuning</h3><span class="sub">custom overrides on top of each skill preset · applies to every world using that skill</span></div>
+      <div class="field" style="margin-bottom:14px"><label>Skill to tune</label><div class="chips"><button v-for="k in ['easy', 'normal', 'hard']" :key="k" class="chip" :class="{ on: tier === k }" @click="tier = k">{{ k }}</button></div></div>
+      <div class="grid g2">
+        <div v-for="t in TUNE" :key="t.k" class="field"><label>{{ t.label }}: <b>{{ +tval(t.k).toFixed(3) }}{{ t.unit }}</b> <span v-if="tuned(t.k)" class="ok-t">custom</span> <span class="dim">({{ t.hint }})</span></label>
+          <input type="range" :min="t.min" :max="t.max" :step="t.step" :value="tval(t.k)" :aria-label="t.label" style="width:100%" @change="e => setTune(t.k, e.target.value)" /></div>
+      </div>
+      <div class="row between" style="margin-top:10px"><span class="mut xs">Per-world overrides: <code class="mono">/bot tune react 0.4</code> in chat (<code class="mono">/bot tune reset</code> to clear).</span><button class="btn sm" :disabled="!g.tuning?.[tier]" @click="resetTune">Reset {{ tier }} to preset</button></div>
     </div>
     <div class="card flush"><div class="scroll-x"><table class="tbl"><thead><tr><th>Game</th><th>Bots now</th><th>Target</th><th>Skill</th><th>Fixed</th><th>Auto-fill</th><th class="r">Control</th></tr></thead><tbody>
       <tr v-for="w in rows" :key="w.id">
