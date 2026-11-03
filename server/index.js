@@ -20,7 +20,7 @@ import { computeCapacity, readMetrics, roomLoad } from './capacity.js';
 import { planAutoRooms, fitCustomGame, MODE_TITLE, ROOM_MODES } from './rooms.js';
 import { parseGame, HelloMsg } from './protocol.js';
 
-const PORT = +process.env.PORT || 8080, HOST = process.env.HOST || '0.0.0.0', VERSION = '1.0.0';
+const PORT = +process.env.PORT || 8080, HOST = process.env.HOST || '127.0.0.1', VERSION = '1.0.0';
 const MAX_PER_IP = +process.env.MAX_PER_IP || 4;
 const { config, newToken } = loadConfig();
 const startedAt = Date.now();
@@ -449,6 +449,7 @@ if (ADMIN_PORT) {
   adminSrv.on('upgrade', (req, socket, head) => app.server.emit('upgrade', req, socket, head)); // the admin live stream is a WebSocket route
   await new Promise((resolve, reject) => { adminSrv.once('error', reject); adminSrv.listen(ADMIN_PORT, ADMIN_HOST, resolve); });
 }
-console.log(`\n  Voxel Realms server v${VERSION}\n  Game:  http://localhost:${PORT}\n  Admin: ${ADMIN_PORT ? `http://${ADMIN_HOST}:${ADMIN_PORT}/admin/ (own port; not on the game port)` : `http://localhost:${PORT}/admin/`}\n  Data:  ${DATA_DIR}`);
+const LOOPBACK = /^(127\.|::1$|localhost$)/.test(HOST);
+console.log(`\n  Voxel Realms server v${VERSION}\n  Listening on ${HOST}:${PORT} - ${LOOPBACK ? 'this machine only (not reachable from the network)' : 'ALL network interfaces: anyone who can reach this port can connect'}\n  Game:  http://localhost:${PORT}\n  Admin: ${ADMIN_PORT ? `http://${ADMIN_HOST}:${ADMIN_PORT}/admin/ (own port; not on the game port)` : `http://localhost:${PORT}/admin/`}\n  Data:  ${DATA_DIR}`);
 if (newToken) console.log(`\n  *** ADMIN TOKEN (shown once - store it safely): ${newToken}\n`);
 else if (process.env.ADMIN_PASSWORD || process.env.ADMIN_TOKEN) console.log('  Admin password taken from the environment.');

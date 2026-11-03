@@ -22,7 +22,9 @@ git clone <this repo> voxel-realms && cd voxel-realms
 ```
 
 `./vr setup` asks, shows a summary, and only then builds and starts the game. It prints the play URL, the admin URL and a generated admin password (once; it is kept in `.env`, mode 600).
-Unattended: `./vr setup --yes --game-port 8080 --data /srv/vr --password generate --admin local --public none`.
+**Private by default:** the game port is published on `127.0.0.1` only, so the server is invisible to your network and the internet and you play at `http://localhost:8080/`. Choose how others connect in step 6 (`--public local|none|tailscale|cloudflare`; `none` = your LAN/VPN, which publishes the port on all interfaces). The admin panel is always on its own loopback port, and the container runs as a non-root user with all Linux capabilities dropped.
+Unattended: `./vr setup --yes --game-port 8080 --data /srv/vr --password generate --admin local --public local`.
+Upgrading an older install? It now binds to localhost unless `VR_GAME_BIND=0.0.0.0` is in `.env` (or re-run `./vr setup`).
 
 | Command | Does |
 |---|---|
@@ -46,7 +48,7 @@ Data (worlds, config, backups) lives in the data folder you chose (default `./da
 ```bash
 npm install
 npm run dev            # client with hot reload on :5173 (proxies /api and /ws to :8080)
-npm run build && npm start   # built client + server on :8080
+npm run build && npm start   # built client + server on 127.0.0.1:8080 (this machine only; set HOST=0.0.0.0 to share on your network)
 npm test               # unit tests
 ```
 

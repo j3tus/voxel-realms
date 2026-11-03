@@ -20,6 +20,8 @@ need_docker() {
 }
 port_free() { ! (ss -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "[:.]$1\$"); }
 lan_ip() { hostname -I 2>/dev/null | awk '{print $1}'; }
+# the address to show for the game: localhost unless the game port is published to the LAN
+play_host() { [ "$(getenv VR_GAME_BIND)" = 0.0.0.0 ] && lan_ip || echo localhost; }
 ask() { # ask VAR "question" default   (non-interactive: keeps the default)
   local v="$1" q="$2" d="$3" a; if [ "$YES" = 1 ]; then printf -v "$v" '%s' "$d"; return; fi
   read -r -p "  $q ${D}[$d]${Z} " a || a=; printf -v "$v" '%s' "${a:-$d}"; }
@@ -60,32 +62,32 @@ cmd_setup() {
   ADM=$c; [ "$ADM" = 2 ] && ! command -v tailscale >/dev/null && { warn "tailscale not found, using 'this machine only'"; ADM=1; }
   ask AP "Admin port (loopback)" "$AP"
   step 6 "Public access for friends" "How people outside your network reach the game port."
-  case "$FA_PUB" in none) c=1;; tailscale) c=2;; cloudflare) c=3;; *) c=;; esac
-  [ -z "$c" ] && choose c "How should friends connect?" 1 "Just my network (LAN / VPN) - I'll sort port-forwarding myself" "Tailscale Funnel - public https URL, no router changes" "Cloudflare quick tunnel - temporary public https URL, no account"
-  PUB=$c; [ "$PUB" = 2 ] && ! command -v tailscale >/dev/null && { warn "tailscale not found, using 'my network'"; PUB=1; }
+  case "$FA_PUB" in local) c=1;; none) c=2;; tailscale) c=3;; cloudflare) c=4;; *) c=;; esac
+  [ -z "$c" ] && choose c "How should friends connect?" 1 "Nobody - this machine only (localhost). The server is hidden from your network and the internet (default)" "Just my network (LAN / VPN) - I'll sort port-forwarding myself" "Tailscale Funnel - public https URL, no router changes" "Cloudflare quick tunnel - temporary public https URL, no account"
+  PUB=$c; [ "$PUB" = 3 ] && ! command -v tailscale >/dev/null && { warn "tailscale not found, keeping the server on this machine only"; PUB=1; }
   step 7 "Resource limits" "Caps for the container. The game also self-limits (bots, rooms) to what the machine can carry."
   ask MEM "Memory limit (e.g. 1g, 2g, 4g)" "$MEM"; ask CPUS "CPU limit (cores)" "$CPUS"
   say; say "${B}Review${Z}"
-  say "  Game      : port $GP  ->  http://$(lan_ip):$GP/"
+  say "  Game      : port $GP  ->  $([ "$PUB" = 2 ] && echo "http://$(lan_ip):$GP/ (reachable from your whole network)" || echo "http://localhost:$GP/ (this machine only)")"
   say "  Data      : $DATA"
   say "  Admin     : $([ "$ADM" = 2 ] && echo "private over Tailscale (admin port 127.0.0.1:$AP)" || echo "this machine only, http://127.0.0.1:$AP/admin/")"
-  say "  Public    : $([ "$PUB" = 2 ] && echo "Tailscale Funnel" || [ "$PUB" = 3 ] && echo "Cloudflare quick tunnel" || echo "my network only")"
+  say "  Public    : $([ "$PUB" = 3 ] && echo "Tailscale Funnel" || [ "$PUB" = 4 ] && echo "Cloudflare quick tunnel" || [ "$PUB" = 2 ] && echo "my network (LAN / VPN)" || echo "nobody - localhost only")"
   say "  Limits    : $MEM memory, $CPUS cores"
   if [ "$YES" != 1 ]; then local go; read -r -p "  Build and start now? [Y/n] " go || go=; case "${go:-y}" in [Nn]*) say "Nothing changed."; exit 0;; esac; fi
   say; say "${B}Installing${Z}"
   umask 077
   setenv ADMIN_PASSWORD "$PW"; setenv VR_GAME_PORT "$GP"; setenv VR_ADMIN_PORT "$AP"; setenv VR_DATA "$DATA"; setenv VR_UID "$(id -u)"; setenv VR_GID "$(id -g)"; setenv VR_MEM "$MEM"; setenv VR_CPUS "$CPUS"
-  setenv VR_ADMIN_MODE "$([ "$ADM" = 2 ] && echo tailscale || echo local)"; setenv VR_PUBLIC "$([ "$PUB" = 2 ] && echo tailscale || [ "$PUB" = 3 ] && echo cloudflare || echo none)"
-  [ "$PUB" = 3 ] && setenv COMPOSE_PROFILES tunnel || unsetenv COMPOSE_PROFILES
+  setenv VR_ADMIN_MODE "$([ "$ADM" = 2 ] && echo tailscale || echo local)"; setenv VR_PUBLIC "$([ "$PUB" = 3 ] && echo tailscale || [ "$PUB" = 4 ] && echo cloudflare || [ "$PUB" = 2 ] && echo none || echo local)"; setenv VR_GAME_BIND "$([ "$PUB" = 2 ] && echo 0.0.0.0 || echo 127.0.0.1)"
+  [ "$PUB" = 4 ] && setenv COMPOSE_PROFILES tunnel || unsetenv COMPOSE_PROFILES
   dc build 2>&1 | tail -n 2; dc up -d --remove-orphans 2>&1 | tail -n 3
   wait_healthy || { dc logs --tail 30 "$NAME"; die "the server did not become healthy (logs above)"; }
   ok "Game server is up"
   expose_tailscale
   say; say "${B}${G}Done.${Z}"
-  say "  Play     : http://$(lan_ip):$GP/"
+  say "  Play     : http://$(play_host):$GP/"
   show_admin
-  [ "$PUB" = 3 ] && { sleep 6; say "  Friends  : $(tunnel_url || echo '(tunnel starting - run ./vr url in a moment)')"; }
-  [ "$PUB" = 2 ] && say "  Friends  : $(ts_host 2>/dev/null | sed 's|^|https://|' || true)/"
+  [ "$PUB" = 4 ] && { sleep 6; say "  Friends  : $(tunnel_url || echo '(tunnel starting - run ./vr url in a moment)')"; }
+  [ "$PUB" = 3 ] && say "  Friends  : $(ts_host 2>/dev/null | sed 's|^|https://|' || true)/"
   [ "${NEWPW:-0}" = 1 ] && say "  Admin password : ${B}$PW${Z}   ${D}(shown once; saved in $PWD/$ENVF - ./vr password to change)${Z}"
   say "  Manage   : ./vr status | logs | update | backup | down"
 }
@@ -114,7 +116,7 @@ case "$cmd" in
   password) need_installed; p="${1:-}"; [ -n "$p" ] || { p=$(rnd 24); gen=1; }; [[ $p =~ ^[A-Za-z0-9._@#%+=:,-]{12,}$ ]] || die "12+ characters from A-Z a-z 0-9 . _ @ # % + = : , -"
     setenv ADMIN_PASSWORD "$p"; dc up -d --force-recreate "$NAME" >/dev/null; wait_healthy; ok "admin password changed"; [ "${gen:-0}" = 1 ] && say "  new password: ${B}$p${Z}";;
   admin) need_installed; show_admin;;
-  url) need_installed; show_admin; say "  Play: http://$(lan_ip):$(getenv VR_GAME_PORT)/"; [ "$(getenv VR_PUBLIC)" = cloudflare ] && say "  Public: $(tunnel_url || echo 'tunnel not ready')"; [ "$(getenv VR_PUBLIC)" = tailscale ] && say "  Public: https://$(ts_host)/";;
+  url) need_installed; show_admin; say "  Play: http://$(play_host):$(getenv VR_GAME_PORT)/"; [ "$(getenv VR_PUBLIC)" = cloudflare ] && say "  Public: $(tunnel_url || echo 'tunnel not ready')"; [ "$(getenv VR_PUBLIC)" = tailscale ] && say "  Public: https://$(ts_host)/";;
   loadtest) need_installed; case "${1:-}" in on) setenv MAX_PER_IP 1000; setenv WS_RATE 100000;; off) unsetenv MAX_PER_IP; unsetenv WS_RATE;; *) die "usage: ./vr loadtest on|off";; esac; dc up -d --force-recreate "$NAME" >/dev/null; wait_healthy; ok "load-test limits ${1}";;
   uninstall) need_installed; read -r -p "Stop and remove the container and image? Your world data in $(getenv VR_DATA) is NOT deleted. [y/N] " a; case "$a" in [Yy]*) dc down --rmi local; ok "removed (data kept)";; *) say cancelled;; esac;;
   *) die "unknown command '$cmd' - try ./vr help";;

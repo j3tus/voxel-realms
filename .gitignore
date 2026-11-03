@@ -29,3 +29,10 @@ backups/
 *.bak*
 admin-ui/.nuxt
 admin-ui/.output
+
+# signing material must never be committed
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key

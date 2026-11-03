@@ -1,1 +1,10 @@
-{ "$schema": "../gen/schemas/desktop-schema.json", "identifier": "default", "description": "The picker window needs no native APIs; the menu is built in Rust.", "windows": ["main"], "permissions": [] }
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Deliberately empty: the launcher page needs no native APIs and remote game pages get none. There is no native menu.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "permissions": []
+}

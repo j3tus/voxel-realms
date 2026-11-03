@@ -18,6 +18,7 @@ COPY --chown=node:node shared ./shared
 COPY --chown=node:node site ./site
 COPY --chown=node:node package.json ./
 USER node
+ENV HOST=0.0.0.0
 VOLUME /data
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=4s --start-period=40s CMD wget -qO- http://127.0.0.1:${PORT}/api/health || exit 1
